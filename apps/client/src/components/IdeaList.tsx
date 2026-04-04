@@ -1,3 +1,4 @@
+import { Plus, Trash2 } from "lucide-react";
 import { trpc } from "../trpc";
 import type { Idea } from "@content-manager/server";
 
@@ -39,7 +40,10 @@ export function IdeaList({ selectedId, onSelect, onNew }: Props) {
           }`}
           onClick={onNew}
         >
-          + New Idea
+          <span className="inline-flex items-center gap-2">
+            <Plus className="w-3.5 h-3.5" />
+            New Idea
+          </span>
         </button>
       </div>
 
@@ -83,8 +87,9 @@ export function IdeaList({ selectedId, onSelect, onNew }: Props) {
                   e.stopPropagation();
                   deleteMutation.mutate({ id: idea.id });
                 }}
+                aria-label="Delete idea"
               >
-                ✕
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
           );

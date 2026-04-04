@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { ArrowLeft, Check, Copy, RotateCcw } from "lucide-react";
 import { trpc } from "../trpc";
 import type { Post } from "@content-manager/server";
 
 const STATUS: Record<Post["status"], { label: string; color: string }> = {
-  idea:      { label: "Draft",     color: "#52526a" },
+  idea:      { label: "Draft",     color: "#64748b" },
   generated: { label: "Generated", color: "#60a5fa" },
   approved:  { label: "Approved",  color: "#34d399" },
   posted:    { label: "Posted",    color: "#a78bfa" },
@@ -50,26 +51,29 @@ export function OutputPanel({ postId, onBack }: Props) {
       {/* Nav */}
       <div className="flex items-center justify-between mb-8">
         <button
-          className="text-[11px] font-mono text-[#8888aa] hover:text-[#e8e8ed] transition-colors uppercase tracking-wider"
+          className="inline-flex items-center gap-2 text-[11px] font-mono text-slate-400 hover:text-slate-200 transition-colors uppercase tracking-wider"
           onClick={onBack}
         >
-          ← back
+          <ArrowLeft className="w-3.5 h-3.5" />
+          back
         </button>
         <div className="flex items-center gap-2">
           {post.status === "generated" && (
             <button
-              className="px-3 py-1.5 rounded-lg border border-[#34d399]/20 bg-[#0e2420] text-[11px] font-semibold text-[#34d399] hover:bg-[#112a24] disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-400/20 bg-emerald-950 text-[11px] font-semibold text-emerald-400 hover:bg-emerald-900 disabled:opacity-50 transition-colors"
               onClick={() => updateStatus.mutate({ id: post.id, status: "approved" })}
               disabled={updateStatus.isPending}
             >
+              <Check className="w-3.5 h-3.5" />
               approve
             </button>
           )}
           <button
-            className="px-3 py-1.5 rounded-lg bg-[#1c1c26] text-[11px] font-semibold text-[#70708a] hover:text-[#e8e8ed] hover:bg-[#242432] transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 text-[11px] font-semibold text-slate-400 hover:text-slate-200 hover:bg-zinc-800 transition-colors"
             onClick={handleCopy}
           >
-            {copied ? "copied ✓" : "copy"}
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? "copied" : "copy"}
           </button>
         </div>
       </div>
@@ -86,10 +90,10 @@ export function OutputPanel({ postId, onBack }: Props) {
         >
           {status.label}
         </span>
-        <span className="text-[#1c1c26]">·</span>
-        <span className="text-[10px] font-mono text-[#32324a] capitalize">{post.type}</span>
-        <span className="text-[#1c1c26]">·</span>
-        <span className="text-[10px] font-mono text-[#28283a]">
+        <span className="text-zinc-900">·</span>
+        <span className="text-[10px] font-mono text-slate-500 capitalize">{post.type}</span>
+        <span className="text-zinc-900">·</span>
+        <span className="text-[10px] font-mono text-slate-500">
           {new Date(post.createdAt).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
@@ -101,7 +105,7 @@ export function OutputPanel({ postId, onBack }: Props) {
       {/* Content */}
       <div className="flex-1 mb-10">
         {post.title && (
-          <h1 className="text-base font-semibold text-[#e8e8ed] mb-5 leading-snug">
+          <h1 className="text-base font-semibold text-slate-200 mb-5 leading-snug">
             {post.title}
           </h1>
         )}
@@ -109,7 +113,7 @@ export function OutputPanel({ postId, onBack }: Props) {
           {lines.map((line, i) => (
             <p
               key={i}
-              className="text-sm font-mono text-[#b8b8cc] leading-relaxed"
+              className="text-sm font-mono text-slate-300 leading-relaxed"
             >
               {line}
             </p>
@@ -118,14 +122,14 @@ export function OutputPanel({ postId, onBack }: Props) {
       </div>
 
       {/* Regenerate */}
-      <div className="border-t border-[#3a3a55] pt-5">
-        <p className="text-[10px] font-mono text-[#28283a] uppercase tracking-widest mb-3">
+      <div className="border-t border-slate-700 pt-5">
+        <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-3">
           regenerate
         </p>
         <div className="flex gap-2">
           <input
             type="text"
-            className="flex-1 bg-[#111116] border border-[#3a3a55] rounded-lg px-3 py-2 text-[13px] font-mono text-[#e8e8ed] placeholder-[#9090a0] focus:outline-none focus:border-[#f59e0b]/30 transition-colors"
+            className="flex-1 bg-zinc-900 border border-slate-700 rounded-lg px-3 py-2 text-[13px] font-mono text-slate-200 placeholder-zinc-400 focus:outline-none focus:border-amber-500/30 transition-colors"
             placeholder="feedback (optional)"
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
@@ -136,13 +140,16 @@ export function OutputPanel({ postId, onBack }: Props) {
             disabled={regenerate.isPending}
           />
           <button
-            className="px-4 py-2 rounded-lg bg-[#1c1c26] text-sm text-[#70708a] hover:text-[#e8e8ed] hover:bg-[#242432] disabled:opacity-50 transition-colors"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-zinc-900 text-sm text-slate-400 hover:text-slate-200 hover:bg-zinc-800 disabled:opacity-50 transition-colors"
             onClick={() =>
               regenerate.mutate({ id: post.id, feedback: feedback || undefined })
             }
             disabled={regenerate.isPending}
+            aria-label="Regenerate post"
           >
-            {regenerate.isPending ? "…" : "↺"}
+            <RotateCcw
+              className={`w-4 h-4 ${regenerate.isPending ? "animate-spin" : ""}`}
+            />
           </button>
         </div>
       </div>

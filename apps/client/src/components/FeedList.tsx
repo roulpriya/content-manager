@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { trpc } from "../trpc";
 import type { Post, Idea } from "@content-manager/server";
 
@@ -27,14 +28,14 @@ type FeedItem =
     };
 
 const POST_STATUS: Record<Post["status"], { label: string; color: string }> = {
-  idea:      { label: "Draft",     color: "#52526a" },
+  idea:      { label: "Draft",     color: "#64748b" },
   generated: { label: "Generated", color: "#60a5fa" },
   approved:  { label: "Approved",  color: "#34d399" },
   posted:    { label: "Posted",    color: "#a78bfa" },
 };
 
 const IDEA_STATUS: Record<Idea["status"], { label: string; color: string }> = {
-  pending:   { label: "Pending",     color: "#52526a" },
+  pending:   { label: "Pending",     color: "#64748b" },
   enriching: { label: "Researching", color: "#f59e0b" },
   enriched:  { label: "Done",        color: "#34d399" },
   error:     { label: "Error",       color: "#f87171" },
@@ -102,14 +103,14 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Filter tabs */}
-      <div className="flex shrink-0 border-b border-[#3a3a55] px-5">
+      <div className="flex shrink-0 border-b border-slate-700 px-5">
         {(["all", "posts", "ideas"] as Filter[]).map((f) => (
           <button
             key={f}
             className={`py-2.5 mr-5 text-[10px] font-semibold uppercase tracking-widest transition-colors border-b-2 -mb-px ${
               filter === f
-                ? "text-[#f59e0b] border-[#f59e0b]"
-                : "text-[#8888aa] border-transparent hover:text-[#b8b8cc]"
+                ? "text-amber-500 border-amber-500"
+                : "text-slate-400 border-transparent hover:text-slate-300"
             }`}
             onClick={() => setFilter(f)}
           >
@@ -122,21 +123,21 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
       <div className="flex-1 overflow-y-auto">
         {isLoading && (
           <div className="flex items-center gap-2 p-5">
-            <span className="w-1 h-1 rounded-full bg-[#28283a] animate-pulse" />
-            <span className="text-[10px] font-mono text-[#28283a]">loading</span>
+            <span className="w-1 h-1 rounded-full bg-slate-500 animate-pulse" />
+            <span className="text-[10px] font-mono text-slate-500">loading</span>
           </div>
         )}
 
         {!isLoading && feed.length === 0 && (
           <div className="p-5 pt-10">
-            <p className="text-sm font-mono text-[#28283a]">nothing here yet_</p>
+            <p className="text-sm font-mono text-slate-500">nothing here yet_</p>
           </div>
         )}
 
         {feed.map((item) => (
           <div
             key={`${item.kind}-${item.id}`}
-            className="relative group flex items-start gap-4 px-5 py-4 border-b border-[#121220] cursor-pointer hover:bg-[#0e0e18] transition-colors"
+            className="relative group flex items-start gap-4 px-5 py-4 border-b border-zinc-900 cursor-pointer hover:bg-zinc-900 transition-colors"
             onClick={() =>
               item.kind === "post" ? onSelectPost(item.id) : onSelectIdea(item.id)
             }
@@ -151,22 +152,22 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
 
             {/* Content */}
             <div className="flex-1 min-w-0 pr-5">
-              <p className="text-sm text-[#e8e8ed] font-medium leading-snug line-clamp-2">
+              <p className="text-sm text-slate-200 font-medium leading-snug line-clamp-2">
                 {item.label}
               </p>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                <span className="text-[10px] font-mono text-[#8888aa] uppercase tracking-wide">
+                <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wide">
                   {item.kind === "post" ? item.sub : "Research"}
                 </span>
-                <span className="text-[#4a4a68]">·</span>
+                <span className="text-slate-600">·</span>
                 <span
                   className="text-[10px] font-mono"
                   style={{ color: item.statusColor }}
                 >
                   {item.statusLabel}
                 </span>
-                <span className="text-[#4a4a68]">·</span>
-                <span className="text-[10px] font-mono text-[#686888]">
+                <span className="text-slate-600">·</span>
+                <span className="text-[10px] font-mono text-slate-500">
                   {formatDate(item.createdAt)}
                 </span>
               </div>
@@ -174,15 +175,16 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
 
             {/* Delete */}
             <button
-              className="absolute top-4 right-4 text-[#1c1c26] hover:text-[#f87171] transition-colors opacity-0 group-hover:opacity-100 text-sm leading-none"
+              className="absolute top-4 right-4 text-zinc-900 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
                 item.kind === "post"
                   ? deletePost.mutate({ id: item.id })
                   : deleteIdea.mutate({ id: item.id });
               }}
+              aria-label={`Delete ${item.kind}`}
             >
-              ×
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
         ))}

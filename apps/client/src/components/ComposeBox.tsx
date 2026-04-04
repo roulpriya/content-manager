@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FileText, Lightbulb, LoaderCircle, ScrollText } from "lucide-react";
 import { trpc } from "../trpc";
 
 interface Props {
@@ -45,13 +46,13 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
   return (
     <div
       className={`shrink-0 px-5 pt-5 pb-4 border-b transition-colors duration-300 ${
-        focused ? "border-[#f59e0b]/25" : "border-[#3a3a55]"
+        focused ? "border-amber-500/25" : "border-slate-700"
       }`}
     >
       {isBusy && (
         <div className="flex items-center gap-2 mb-3">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#f59e0b] animate-pulse" />
-          <span className="text-[10px] font-mono text-[#f59e0b] tracking-wider">
+          <LoaderCircle className="w-3.5 h-3.5 text-amber-500 animate-spin" />
+          <span className="text-[10px] font-mono text-amber-500 tracking-wider">
             {isGenerating
               ? `writing ${generatePost.variables?.type}…`
               : "researching…"}
@@ -60,7 +61,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
       )}
 
       <textarea
-        className="w-full bg-transparent font-mono text-[13px] text-[#e8e8ed] placeholder-[#9090a0] resize-none focus:outline-none leading-relaxed tracking-wide"
+        className="w-full bg-transparent font-mono text-[13px] text-slate-200 placeholder-zinc-400 resize-none focus:outline-none leading-relaxed tracking-wide"
         rows={4}
         placeholder="What's on your mind?"
         value={text}
@@ -71,12 +72,13 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
         autoFocus
       />
 
-      <div className="flex items-center justify-between pt-3 mt-1 border-t border-[#3a3a55]">
-        <span className="text-[10px] font-mono text-[#28283a] tabular-nums select-none">
+      <div className="flex items-center justify-between pt-3 mt-1 border-t border-slate-700">
+        <span className="text-[10px] font-mono text-slate-500 tabular-nums select-none">
           {text.length > 0 ? `${text.length}` : "·"}
         </span>
         <div className="flex gap-1.5">
           <ActionButton
+            icon={FileText}
             label={
               isGenerating && generatePost.variables?.type === "tweet"
                 ? "writing…"
@@ -84,9 +86,10 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
             }
             onClick={() => handleGeneratePost("tweet")}
             disabled={isBusy || !text.trim()}
-            variant="primary"
+            color="amber"
           />
           <ActionButton
+            icon={ScrollText}
             label={
               isGenerating && generatePost.variables?.type === "thread"
                 ? "writing…"
@@ -94,13 +97,14 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
             }
             onClick={() => handleGeneratePost("thread")}
             disabled={isBusy || !text.trim()}
-            variant="secondary"
+            color="blue"
           />
           <ActionButton
+            icon={Lightbulb}
             label={isResearching ? "thinking…" : "research"}
             onClick={handleResearch}
             disabled={isBusy || !text.trim()}
-            variant="secondary"
+            color="violet"
           />
         </div>
       </div>
@@ -108,27 +112,32 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
   );
 }
 
+const BUTTON_COLORS = {
+  amber: "bg-amber-500 text-zinc-950 hover:bg-amber-400",
+  blue:  "bg-blue-400 text-zinc-950 hover:bg-blue-300",
+  violet: "bg-violet-400 text-zinc-950 hover:bg-violet-300",
+};
+
 function ActionButton({
   label,
   onClick,
   disabled,
-  variant,
+  color,
+  icon: Icon,
 }: {
   label: string;
   onClick: () => void;
   disabled: boolean;
-  variant: "primary" | "secondary";
+  color: keyof typeof BUTTON_COLORS;
+  icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
     <button
-      className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-150 active:scale-95 disabled:opacity-25 ${
-        variant === "primary"
-          ? "bg-[#f59e0b] text-[#0b0b0e] hover:bg-[#fbbf24]"
-          : "bg-[#2a2a42] text-[#c8c8e0] hover:bg-[#363658] hover:text-white"
-      }`}
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide ${BUTTON_COLORS[color]} disabled:bg-zinc-800 disabled:text-zinc-500 transition-all duration-150 active:scale-95`}
       onClick={onClick}
       disabled={disabled}
     >
+      <Icon className="w-3.5 h-3.5" />
       {label}
     </button>
   );

@@ -26,16 +26,16 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-dvh max-w-2xl mx-auto w-full border-x border-[#3a3a55]">
+    <div className="flex flex-col h-dvh max-w-2xl mx-auto w-full border-x border-slate-700">
       {/* Header */}
-      <header className="shrink-0 flex items-center justify-between px-5 h-11 border-b border-[#3a3a55]">
+      <header className="shrink-0 flex items-center justify-between px-5 h-11 border-b border-slate-700">
         <div className="flex items-center gap-2.5">
-          <span className="w-2 h-2 rounded-full bg-[#f59e0b]" />
-          <span className="text-xs font-semibold tracking-[0.18em] uppercase text-[#e8e8ed]">
+          <span className="w-2 h-2 rounded-full bg-amber-500" />
+          <span className="text-xs font-semibold tracking-[0.18em] uppercase text-slate-200">
             Quill
           </span>
         </div>
-        <span className="text-[10px] font-mono text-[#28283a] tracking-widest uppercase">
+        <span className="text-[10px] font-mono text-slate-500 tracking-widest uppercase">
           content manager
         </span>
       </header>
