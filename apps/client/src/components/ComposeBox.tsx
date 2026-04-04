@@ -44,11 +44,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
   }
 
   return (
-    <div
-      className={`shrink-0 px-5 pt-5 pb-4 border-b transition-colors duration-300 ${
-        focused ? "border-amber-500/25" : "border-slate-700"
-      }`}
-    >
+    <div className="shrink-0 px-6 pt-6 pb-7 border-b border-zinc-800">
       {isBusy && (
         <div className="flex items-center gap-2 mb-3">
           <LoaderCircle className="w-3.5 h-3.5 text-amber-500 animate-spin" />
@@ -61,7 +57,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
       )}
 
       <textarea
-        className="w-full bg-transparent font-mono text-[13px] text-slate-200 placeholder-zinc-400 resize-none focus:outline-none leading-relaxed tracking-wide"
+        className="w-full bg-zinc-900 rounded-xl px-4 py-3 font-mono text-[13px] text-slate-200 placeholder-zinc-400 resize-none focus:outline-none leading-relaxed tracking-wide"
         rows={4}
         placeholder="What's on your mind?"
         value={text}
@@ -72,7 +68,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
         autoFocus
       />
 
-      <div className="flex items-center justify-between pt-3 mt-1 border-t border-slate-700">
+      <div className="flex items-center justify-between pt-4 mt-2">
         <span className="text-[10px] font-mono text-slate-500 tabular-nums select-none">
           {text.length > 0 ? `${text.length}` : "·"}
         </span>

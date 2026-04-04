@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Check, Copy, RotateCcw } from "lucide-react";
+import { Check, Copy, RotateCcw } from "lucide-react";
 import { trpc } from "../trpc";
 import type { Post } from "@content-manager/server";
 
@@ -12,10 +12,9 @@ const STATUS: Record<Post["status"], { label: string; color: string }> = {
 
 interface Props {
   postId: number;
-  onBack: () => void;
 }
 
-export function OutputPanel({ postId, onBack }: Props) {
+export function OutputPanel({ postId }: Props) {
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState("");
   const utils = trpc.useUtils();
@@ -47,16 +46,8 @@ export function OutputPanel({ postId, onBack }: Props) {
   const lines = post.body?.split("\n").filter(Boolean) ?? [];
 
   return (
-    <div className="flex flex-col min-h-full p-6">
-      {/* Nav */}
-      <div className="flex items-center justify-between mb-8">
-        <button
-          className="inline-flex items-center gap-2 text-[11px] font-mono text-slate-400 hover:text-slate-200 transition-colors uppercase tracking-wider"
-          onClick={onBack}
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          back
-        </button>
+    <div className="flex flex-col p-6">
+      <div className="flex items-center justify-end mb-8">
         <div className="flex items-center gap-2">
           {post.status === "generated" && (
             <button
@@ -78,7 +69,6 @@ export function OutputPanel({ postId, onBack }: Props) {
         </div>
       </div>
 
-      {/* Meta row */}
       <div className="flex items-center gap-2.5 mb-6">
         <span
           className="w-1.5 h-1.5 rounded-full shrink-0"
@@ -102,7 +92,6 @@ export function OutputPanel({ postId, onBack }: Props) {
         </span>
       </div>
 
-      {/* Content */}
       <div className="flex-1 mb-10">
         {post.title && (
           <h1 className="text-base font-semibold text-slate-200 mb-5 leading-snug">
@@ -121,15 +110,14 @@ export function OutputPanel({ postId, onBack }: Props) {
         </div>
       </div>
 
-      {/* Regenerate */}
-      <div className="border-t border-slate-700 pt-5">
+      <div className="pt-6">
         <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-3">
           regenerate
         </p>
         <div className="flex gap-2">
           <input
             type="text"
-            className="flex-1 bg-zinc-900 border border-slate-700 rounded-lg px-3 py-2 text-[13px] font-mono text-slate-200 placeholder-zinc-400 focus:outline-none focus:border-amber-500/30 transition-colors"
+            className="flex-1 bg-zinc-900 rounded-lg px-3 py-2 text-[13px] font-mono text-slate-200 placeholder-zinc-400 focus:outline-none transition-colors"
             placeholder="feedback (optional)"
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
