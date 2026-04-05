@@ -1,0 +1,12 @@
+services:
+  app:
+    image: content-manager
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist the SQLite database across container restarts
+      - ./data:/app/data
+    env_file:
+      - apps/server/.env
+    restart: unless-stopped

@@ -1,0 +1,7 @@
+node_modules
+apps/*/node_modules
+apps/client/dist
+apps/server/dist
+.git
+*.md
+apps/server/.env
