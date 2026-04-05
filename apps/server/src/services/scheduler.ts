@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { posts } from "../db/schema.js";
+import { posts, type PostTopic } from "../db/schema.js";
 import { createAndGenerate } from "./post.js";
 
 const SEED_TOPICS = [
@@ -23,16 +23,21 @@ async function runBatchGeneration() {
 
   const toGenerate =
     ideas.length > 0
-      ? ideas.map((p) => ({ input: p.input, type: p.type as "tweet" | "thread" }))
+      ? ideas.map((p) => ({
+          input: p.input,
+          type: p.type as "tweet" | "thread",
+          topic: (p.topic ?? "general") as PostTopic,
+        }))
       : SEED_TOPICS.slice(0, 3).map((topic) => ({
           input: topic,
           type: "tweet" as const,
+          topic: "general" as const,
         }));
 
   let count = 0;
   for (const item of toGenerate) {
     try {
-      await createAndGenerate(item.input, item.type);
+      await createAndGenerate(item.input, item.type, item.topic);
       count++;
     } catch (err) {
       console.error(`[scheduler] Failed to generate post:`, err);

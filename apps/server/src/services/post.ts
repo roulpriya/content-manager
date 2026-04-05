@@ -1,19 +1,21 @@
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { posts, type Post } from "../db/schema.js";
+import { posts, type Post, type PostTopic } from "../db/schema.js";
 import { generateContent } from "./content.js";
+import { saveApprovedPostToMemory } from "./memory.js";
 
 export async function createAndGenerate(
   input: string,
-  type: "tweet" | "thread"
+  type: "tweet" | "thread",
+  topic: PostTopic
 ): Promise<Post> {
   const ts = Date.now();
   const [post] = await db
     .insert(posts)
-    .values({ input, type, status: "idea", createdAt: ts, updatedAt: ts })
+    .values({ input, type, topic, status: "idea", createdAt: ts, updatedAt: ts })
     .returning();
 
-  const { title, body } = await generateContent(input, type);
+  const { title, body } = await generateContent(input, type, topic);
 
   const [updated] = await db
     .update(posts)
@@ -28,7 +30,12 @@ export async function regenerate(id: number, feedback?: string): Promise<Post> {
   const [post] = await db.select().from(posts).where(eq(posts.id, id));
   if (!post) throw new Error(`Post ${id} not found`);
 
-  const { title, body } = await generateContent(post.input, post.type, feedback);
+  const { title, body } = await generateContent(
+    post.input,
+    post.type,
+    post.topic,
+    feedback
+  );
 
   const [updated] = await db
     .update(posts)
@@ -60,6 +67,9 @@ export async function updateStatus(
     .where(eq(posts.id, id))
     .returning();
   if (!updated) throw new Error(`Post ${id} not found`);
+  if (status === "approved" && updated.body) {
+    await saveApprovedPostToMemory(updated);
+  }
   return updated;
 }
 

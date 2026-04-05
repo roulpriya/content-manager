@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { FileText, Lightbulb, LoaderCircle, ScrollText } from "lucide-react";
+import { ChevronDown, FileText, Lightbulb, LoaderCircle, ScrollText } from "lucide-react";
+import type { PostTopic } from "@content-manager/server";
 import { trpc } from "../trpc";
 
 interface Props {
@@ -9,12 +10,13 @@ interface Props {
 
 export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
   const [text, setText] = useState("");
-  const [focused, setFocused] = useState(false);
+  const [topic, setTopic] = useState<PostTopic | "">("");
   const utils = trpc.useUtils();
 
   const generatePost = trpc.post.generate.useMutation({
     onSuccess: (post) => {
       setText("");
+      setTopic("");
       utils.post.list.invalidate();
       onPostCreated(post.id);
     },
@@ -39,8 +41,8 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
   }
 
   function handleGeneratePost(type: "tweet" | "thread") {
-    if (!text.trim() || isBusy) return;
-    generatePost.mutate({ input: text.trim(), type });
+    if (!text.trim() || isBusy || !topic) return;
+    generatePost.mutate({ input: text.trim(), type, topic });
   }
 
   return (
@@ -63,15 +65,14 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         disabled={isBusy}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
         autoFocus
       />
 
-      <div className="flex items-center justify-between pt-4 mt-2">
+      <div className="flex items-center justify-between gap-4 pt-4 mt-2">
         <span className="text-[10px] font-mono text-slate-500 tabular-nums select-none">
           {text.length > 0 ? `${text.length}` : "·"}
         </span>
+        <TopicSelect value={topic} onChange={setTopic} disabled={isBusy} />
         <div className="flex gap-1.5">
           <ActionButton
             icon={FileText}
@@ -81,7 +82,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
                 : "tweet"
             }
             onClick={() => handleGeneratePost("tweet")}
-            disabled={isBusy || !text.trim()}
+            disabled={isBusy || !text.trim() || !topic}
             color="amber"
           />
           <ActionButton
@@ -92,7 +93,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
                 : "thread"
             }
             onClick={() => handleGeneratePost("thread")}
-            disabled={isBusy || !text.trim()}
+            disabled={isBusy || !text.trim() || !topic}
             color="blue"
           />
           <ActionButton
@@ -108,11 +109,49 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
   );
 }
 
+const TOPIC_OPTIONS: Array<{ value: PostTopic; label: string }> = [
+  { value: "day-schedule", label: "Day Schedule" },
+  { value: "gym-routine", label: "Gym Routine" },
+  { value: "llm-project", label: "LLM Project" },
+  { value: "new-tech-stack", label: "New Tech Stack" },
+  { value: "ui-product-demo", label: "UI / Product / Demo" },
+];
+
 const BUTTON_COLORS = {
   amber: "bg-amber-500 text-zinc-950 hover:bg-amber-400",
   blue:  "bg-blue-400 text-zinc-950 hover:bg-blue-300",
   violet: "bg-violet-400 text-zinc-950 hover:bg-violet-300",
 };
+
+function TopicSelect({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: PostTopic | "";
+  onChange: (value: PostTopic | "") => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="relative min-w-52">
+      <select
+        className="w-full appearance-none rounded-lg bg-zinc-900 px-3 py-2 pr-9 text-[11px] font-medium text-slate-300 focus:outline-none disabled:text-zinc-500"
+        value={value}
+        onChange={(e) => onChange(e.target.value as PostTopic | "")}
+        disabled={disabled}
+        aria-label="Choose post topic"
+      >
+        <option value="">Choose topic</option>
+        {TOPIC_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+    </div>
+  );
+}
 
 function ActionButton({
   label,
