@@ -2,16 +2,19 @@ import { MODEL, openai } from "../lib/llm.js";
 import type { PostTopic } from "../db/schema.js";
 import { askMemoryAgent } from "./memory.js";
 
-const SYSTEM_PROMPT = `You turn rough notes into clean Twitter posts and threads.
+const SYSTEM_PROMPT = `You turn rough notes into sharp Twitter posts and threads.
 
 Your writing should feel:
 - Human, natural, and specific
+- Engaging and conversational
 - Clear and structured
 - Confident without sounding robotic
 - True to the requested topic and tone
 
-You should aggressively remove AI-sounding phrasing, generic fluff, and hype.
-Keep things readable and social-media native.
+You should aggressively remove AI-sounding phrasing, filler, generic fluff, and hype.
+Do not use double dashes.
+Do not sound like a template.
+Keep things readable, social-media native, and close to the user's existing writing style when memory context is available.
 
 Always respond with valid JSON in the exact shape requested.`;
 
@@ -85,7 +88,11 @@ const UNIVERSAL_ADD_ON = `Universal requirements:
 - Keep it under 280 characters if possible for a single tweet
 - Make it feel like a real human wrote it
 - Avoid generic phrases like "excited to share"
-- Prioritize clarity and personality`;
+- Prioritize clarity and personality
+- Avoid filler words and empty setup
+- Do not use double dashes
+- Prefer crisp, natural sentences over polished AI-sounding phrasing
+- If memory context includes writing-style patterns, follow them closely`;
 
 const TWEET_PROMPT = (input: string, topic: PostTopic) => `
 Input:
@@ -138,8 +145,16 @@ I am generating a ${type} for the topic "${topic}".
 New input:
 ${input}
 
-Find the most relevant memories that could help with continuity, progress updates, repeated themes, or project context.
-If helpful memories exist, summarize them in a compact bullet list for a writing agent.
+Find the most relevant approved-post memories that could help with:
+1. continuity, progress updates, repeated themes, or project context
+2. the user's actual writing style, phrasing rhythm, hook style, and sentence shape
+
+Return a compact answer for a writing agent with two sections when possible:
+- Style patterns
+- Relevant past context
+
+Only include patterns that are clearly visible in prior memories.
+Do not invent a style.
 If nothing useful exists, answer exactly: NO_RELEVANT_MEMORY
 `);
   const basePrompt =
@@ -147,7 +162,7 @@ If nothing useful exists, answer exactly: NO_RELEVANT_MEMORY
   const promptSections = [basePrompt];
 
   if (memoryAnswer && memoryAnswer !== "NO_RELEVANT_MEMORY") {
-    promptSections.push(`Memory context:\n${memoryAnswer}`);
+    promptSections.push(`Use this memory-derived style and context if relevant:\n${memoryAnswer}`);
   }
 
   if (feedback) {
