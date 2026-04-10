@@ -116,6 +116,11 @@ const dictionaryRows = [
     value:
       "Memory snapshots may reflect generated, accepted, published, or rejected post states. Content-generation agents should prefer accepted or published memories when inferring writing style.",
   },
+  {
+    key: "memory.tools.github",
+    value:
+      "GitHub read tool fetches recent repositories, pull requests, and commits for the configured GitHub account using GITHUB_TOKEN and optional GITHUB_USERNAME.",
+  },
 ];
 
 const upsertDictionary = sqlite.prepare(`

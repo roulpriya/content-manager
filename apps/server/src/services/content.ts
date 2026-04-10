@@ -23,7 +23,7 @@ const MEMORY_READ_TOOL = {
   function: {
     name: "memoryRead",
     description:
-      "Ask the memory read agent for prior style/context signals from stored post memories before writing.",
+      "Ask the memory read agent for prior style/context signals from stored post memories and relevant recent GitHub activity before writing.",
     parameters: {
       type: "object",
       properties: {
@@ -173,6 +173,7 @@ export async function generateContent(
       content: `${SYSTEM_PROMPT}
 
 You may call the memoryRead tool when prior approved or scheduled post context would improve style matching or continuity.
+Use it for recent GitHub repositories, pull requests, and commits when the draft is about work, building, shipping, coding, projects, or daily progress.
 Do not call it unless it will materially help this draft.`,
     },
     { role: "user", content: prompt },

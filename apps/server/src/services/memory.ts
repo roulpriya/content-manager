@@ -1,6 +1,7 @@
 import { MODEL, openai } from "../lib/llm.js";
 import { rawSqlite } from "../db/index.js";
 import type { Memory, Post, PostStatus, PostTopic } from "../db/schema.js";
+import { fetchRecentGitHubActivity, formatGitHubActivityForPrompt } from "./github.js";
 
 const STOPWORDS = new Set([
   "a",
@@ -500,6 +501,9 @@ Use these only if they genuinely help with continuity, progress, or specific sty
 }
 
 const memoryStore = new MemoryStore();
+export async function readRecentGitHubActivityTool(days?: number) {
+  return fetchRecentGitHubActivity(days);
+}
 
 async function runAgentLoop(
   systemPrompt: string,
@@ -686,6 +690,7 @@ export async function askMemoryReadAgent(question: string): Promise<string> {
 You are the memory read agent for this app.
 You answer natural-language questions from content-generation agents.
 Prefer approved memories for style inference, but you may use generated memories for continuity if they are clearly relevant.
+If recent GitHub repositories, pull requests, or commits would materially improve the answer, fetch and summarize them.
 Keep answers compact and directly useful to a writing agent.`;
 
   return runAgentLoop(
@@ -746,6 +751,20 @@ Keep answers compact and directly useful to a writing agent.`;
       {
         type: "function",
         function: {
+          name: "readRecentGitHubActivity",
+          description:
+            "Fetch recent GitHub repositories, pull requests, and commits for the configured account.",
+          parameters: {
+            type: "object",
+            properties: {
+              days: { type: "number" },
+            },
+          },
+        },
+      },
+      {
+        type: "function",
+        function: {
           name: "findRelevantMemories",
           description:
             "Find the most relevant memories for a new content-generation request and format them for prompt use.",
@@ -767,6 +786,13 @@ Keep answers compact and directly useful to a writing agent.`;
       getMemoryById: (toolArgs) => memoryStore.getById(toolArgs.id),
       searchMemories: (toolArgs) =>
         memoryStore.search(toolArgs.query, toolArgs.topic, toolArgs.limit),
+      readRecentGitHubActivity: async (toolArgs) => {
+        const activity = await readRecentGitHubActivityTool(toolArgs.days);
+        return {
+          ...activity,
+          promptContext: formatGitHubActivityForPrompt(activity),
+        };
+      },
       findRelevantMemories: (toolArgs) =>
         memoryStore.formatForPrompt(
           memoryStore.searchRelevantForGeneration(toolArgs.input, toolArgs.topic, toolArgs.limit)
