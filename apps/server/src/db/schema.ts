@@ -18,9 +18,10 @@ export const posts = sqliteTable("posts", {
   body: text("body"),
   type: text("type", { enum: ["tweet", "thread"] }).notNull(),
   topic: text("topic", { enum: POST_TOPICS }).notNull().default("general"),
-  status: text("status", { enum: ["idea", "generated", "approved", "posted"] })
+  status: text("status", { enum: ["idea", "generated", "accepted", "published", "rejected"] })
     .notNull()
     .default("idea"),
+  scheduledFor: integer("scheduled_for").notNull(),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });

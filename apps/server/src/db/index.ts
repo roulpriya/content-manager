@@ -18,6 +18,7 @@ sqlite.exec(`
     type TEXT NOT NULL,
     topic TEXT NOT NULL DEFAULT 'general',
     status TEXT NOT NULL DEFAULT 'idea',
+    scheduled_for INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   );
@@ -62,6 +63,18 @@ if (!postColumns.some((column) => column.name === "topic")) {
     "ALTER TABLE posts ADD COLUMN topic TEXT NOT NULL DEFAULT 'general';"
   );
 }
+
+if (!postColumns.some((column) => column.name === "scheduled_for")) {
+  sqlite.exec(
+    "ALTER TABLE posts ADD COLUMN scheduled_for INTEGER NOT NULL DEFAULT 0;"
+  );
+  sqlite.exec("UPDATE posts SET scheduled_for = created_at WHERE scheduled_for = 0;");
+}
+
+sqlite.exec(`
+  UPDATE posts SET status = 'accepted' WHERE status = 'approved';
+  UPDATE posts SET status = 'published' WHERE status = 'posted';
+`);
 
 const now = Date.now();
 const dictionaryRows = [

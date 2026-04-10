@@ -117,11 +117,12 @@ class MemoryAgent {
           body,
           topic,
           type,
+          scheduled_for AS scheduledFor,
           created_at AS createdAt,
           updated_at AS updatedAt,
           status
         FROM posts
-        WHERE status = 'approved'
+        WHERE status IN ('accepted', 'published')
       `)
       .all() as Array<{
         id: number;
@@ -130,6 +131,7 @@ class MemoryAgent {
         body: string | null;
         topic: PostTopic;
         type: "tweet" | "thread";
+        scheduledFor: number;
         createdAt: number;
         updatedAt: number;
         status: Post["status"];
@@ -440,6 +442,10 @@ export async function listMemories(limit?: number): Promise<Memory[]> {
 
 export async function deleteMemory(id: number): Promise<void> {
   await memoryAgent.delete(id);
+}
+
+export async function deleteMemoryBySourcePostId(sourcePostId: number): Promise<void> {
+  rawSqlite.prepare("DELETE FROM memories WHERE source_post_id = ?").run(sourcePostId);
 }
 
 export async function searchMemories(

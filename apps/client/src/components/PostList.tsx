@@ -5,8 +5,9 @@ import type { Post } from "@content-manager/server";
 const STATUS_BADGE: Record<Post["status"], { label: string; className: string }> = {
   idea: { label: "Idea", className: "bg-zinc-800 text-zinc-400" },
   generated: { label: "Generated", className: "bg-blue-950 text-blue-300" },
-  approved: { label: "Approved", className: "bg-green-950 text-green-400" },
-  posted: { label: "Posted", className: "bg-purple-950 text-purple-300" },
+  accepted: { label: "Accepted", className: "bg-green-950 text-green-400" },
+  published: { label: "Published", className: "bg-purple-950 text-purple-300" },
+  rejected: { label: "Archived", className: "bg-red-950 text-red-400" },
 };
 
 const TYPE_LABEL: Record<Post["type"], string> = {

@@ -189,3 +189,24 @@ If nothing useful exists, answer exactly: NO_RELEVANT_MEMORY
   const parsed = JSON.parse(content) as { title: string; body: string };
   return parsed;
 }
+
+export async function generateCalendarContent(
+  input: string,
+  type: "tweet" | "thread",
+  topic: PostTopic,
+  dayNumber: number,
+  totalDays: number,
+  scheduledFor: number
+): Promise<{ title: string; body: string }> {
+  const calendarContext = `Calendar planning context:
+- This is post ${dayNumber} of ${totalDays}
+- Planned publish date: ${new Date(scheduledFor).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })}
+- Keep the same broad theme, but make this entry distinct from the other days
+- Avoid repeating the same hook, phrasing, or structure as nearby posts`;
+
+  return generateContent(input, type, topic, calendarContext);
+}

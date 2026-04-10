@@ -11,14 +11,25 @@ interface Props {
 export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
   const [text, setText] = useState("");
   const [topic, setTopic] = useState<PostTopic | "">("");
+  const [days, setDays] = useState(1);
   const utils = trpc.useUtils();
 
   const generatePost = trpc.post.generate.useMutation({
     onSuccess: (post) => {
       setText("");
       setTopic("");
+      setDays(1);
       utils.post.list.invalidate();
       onPostCreated(post.id);
+    },
+  });
+  const generateCalendar = trpc.post.generateCalendar.useMutation({
+    onSuccess: (posts) => {
+      setText("");
+      setTopic("");
+      setDays(1);
+      utils.post.list.invalidate();
+      if (posts[0]) onPostCreated(posts[0].id);
     },
   });
 
@@ -27,7 +38,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
     onSuccess: () => utils.idea.list.invalidate(),
   });
 
-  const isGenerating = generatePost.isPending;
+  const isGenerating = generatePost.isPending || generateCalendar.isPending;
   const isResearching = createIdea.isPending || enrichIdea.isPending;
   const isBusy = isGenerating || isResearching;
 
@@ -42,6 +53,10 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
 
   function handleGeneratePost(type: "tweet" | "thread") {
     if (!text.trim() || isBusy || !topic) return;
+    if (days > 1) {
+      generateCalendar.mutate({ input: text.trim(), type, topic, days });
+      return;
+    }
     generatePost.mutate({ input: text.trim(), type, topic });
   }
 
@@ -69,17 +84,23 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
       />
 
       <div className="flex items-center justify-between gap-4 pt-4 mt-2">
-        <span className="text-[10px] font-mono text-slate-500 tabular-nums select-none">
-          {text.length > 0 ? `${text.length}` : "·"}
-        </span>
-        <TopicSelect value={topic} onChange={setTopic} disabled={isBusy} />
-        <div className="flex gap-1.5">
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-mono text-slate-500 tabular-nums select-none">
+            {text.length > 0 ? `${text.length}` : "·"}
+          </span>
+          <DaysInput value={days} onChange={setDays} disabled={isBusy} />
+        </div>
+        <div className="flex items-center gap-2">
+          <TopicSelect value={topic} onChange={setTopic} disabled={isBusy} />
+          <div className="flex gap-1.5">
           <ActionButton
             icon={FileText}
             label={
               isGenerating && generatePost.variables?.type === "tweet"
                 ? "writing…"
-                : "tweet"
+                : days > 1
+                  ? `tweet x${days}`
+                  : "tweet"
             }
             onClick={() => handleGeneratePost("tweet")}
             disabled={isBusy || !text.trim() || !topic}
@@ -90,7 +111,9 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
             label={
               isGenerating && generatePost.variables?.type === "thread"
                 ? "writing…"
-                : "thread"
+                : days > 1
+                  ? `thread x${days}`
+                  : "thread"
             }
             onClick={() => handleGeneratePost("thread")}
             disabled={isBusy || !text.trim() || !topic}
@@ -103,6 +126,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
             disabled={isBusy || !text.trim()}
             color="violet"
           />
+          </div>
         </div>
       </div>
     </div>
@@ -150,6 +174,31 @@ function TopicSelect({
       </select>
       <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
     </div>
+  );
+}
+
+function DaysInput({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  disabled: boolean;
+}) {
+  return (
+    <label className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-slate-500">
+      days
+      <input
+        type="number"
+        min={1}
+        max={30}
+        value={value}
+        onChange={(e) => onChange(Math.max(1, Math.min(30, Number(e.target.value) || 1)))}
+        disabled={disabled}
+        className="w-14 rounded-lg bg-zinc-900 px-2 py-1 text-center text-[11px] text-slate-300 focus:outline-none"
+      />
+    </label>
   );
 }
 

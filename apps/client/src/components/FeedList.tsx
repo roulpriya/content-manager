@@ -3,7 +3,7 @@ import { Trash2 } from "lucide-react";
 import { trpc } from "../trpc";
 import type { Post, Idea } from "@content-manager/server";
 
-type Filter = "all" | "posts" | "ideas";
+type Filter = "all" | "posts" | "calendar" | "ideas" | "archive";
 
 type FeedItem =
   | {
@@ -15,6 +15,8 @@ type FeedItem =
       statusLabel: string;
       statusColor: string;
       createdAt: number;
+      scheduledFor: number;
+      topic: string;
     }
   | {
       kind: "idea";
@@ -30,8 +32,9 @@ type FeedItem =
 const POST_STATUS: Record<Post["status"], { label: string; color: string }> = {
   idea:      { label: "Draft",     color: "#64748b" },
   generated: { label: "Generated", color: "#60a5fa" },
-  approved:  { label: "Approved",  color: "#34d399" },
-  posted:    { label: "Posted",    color: "#a78bfa" },
+  accepted:  { label: "Accepted",  color: "#34d399" },
+  published: { label: "Published", color: "#a78bfa" },
+  rejected:  { label: "Archived",  color: "#f87171" },
 };
 
 const IDEA_STATUS: Record<Idea["status"], { label: string; color: string }> = {
@@ -67,9 +70,15 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
 
   const isLoading = postsLoading || ideasLoading;
 
+  const visiblePosts = posts.filter((post) => {
+    if (filter === "archive") return post.status === "rejected";
+    if (filter === "calendar") return post.status !== "rejected";
+    return post.status !== "rejected";
+  });
+
   const feed: FeedItem[] = [
-    ...(filter !== "ideas"
-      ? posts.map((p) => {
+    ...(filter !== "ideas" && filter !== "archive"
+      ? visiblePosts.map((p) => {
           const s = POST_STATUS[p.status];
           return {
             kind: "post" as const,
@@ -80,10 +89,31 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
             statusLabel: s.label,
             statusColor: s.color,
             createdAt: p.createdAt,
+            scheduledFor: p.scheduledFor,
+            topic: topicLabel(p.topic),
           };
         })
       : []),
-    ...(filter !== "posts"
+    ...(filter === "archive"
+      ? posts
+          .filter((p) => p.status === "rejected")
+          .map((p) => {
+            const s = POST_STATUS[p.status];
+            return {
+              kind: "post" as const,
+              id: p.id,
+              label: p.title ?? p.input,
+              sub: p.type === "tweet" ? "Tweet" : "Thread",
+              status: p.status,
+              statusLabel: s.label,
+              statusColor: s.color,
+              createdAt: p.createdAt,
+              scheduledFor: p.scheduledFor,
+              topic: topicLabel(p.topic),
+            };
+          })
+      : []),
+    ...(filter !== "posts" && filter !== "calendar" && filter !== "archive"
       ? ideas.map((i) => {
           const s = IDEA_STATUS[i.status];
           return {
@@ -98,13 +128,17 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
           };
         })
       : []),
-  ].sort((a, b) => b.createdAt - a.createdAt);
+  ].sort((a, b) =>
+    filter === "calendar" && a.kind === "post" && b.kind === "post"
+      ? a.scheduledFor - b.scheduledFor
+      : b.createdAt - a.createdAt
+  );
 
   return (
     <div className="flex flex-col">
       {/* Filter tabs */}
       <div className="flex shrink-0 px-6 pt-3 pb-2 gap-1">
-        {(["all", "posts", "ideas"] as Filter[]).map((f) => (
+        {(["all", "posts", "calendar", "ideas", "archive"] as Filter[]).map((f) => (
           <button
             key={f}
             className={`px-3 py-1.5 rounded-full text-[10px] font-semibold uppercase tracking-widest transition-colors ${
@@ -167,8 +201,18 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
                   {item.statusLabel}
                 </span>
                 <span className="text-slate-600">·</span>
+                {item.kind === "post" && (
+                  <>
+                    <span className="text-[10px] font-mono text-slate-500">
+                      {item.topic}
+                    </span>
+                    <span className="text-slate-600">·</span>
+                  </>
+                )}
                 <span className="text-[10px] font-mono text-slate-500">
-                  {formatDate(item.createdAt)}
+                  {item.kind === "post" && filter === "calendar"
+                    ? formatScheduledDate(item.scheduledFor)
+                    : formatDate(item.createdAt)}
                 </span>
               </div>
             </div>
@@ -202,4 +246,12 @@ function formatDate(ts: number): string {
   if (days === 1) return "yesterday";
   if (days < 7) return `${days}d ago`;
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function formatScheduledDate(ts: number): string {
+  return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function topicLabel(topic: string): string {
+  return topic.replace(/-/g, " ");
 }
