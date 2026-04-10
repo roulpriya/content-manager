@@ -1,5 +1,5 @@
 import { MODEL, openai } from "../lib/llm.js";
-import type { PostTopic } from "../db/schema.js";
+import type { PostTopic } from "../db/schema.js"; // string
 import { askMemoryReadAgent } from "./memory.js";
 
 const SYSTEM_PROMPT = `You turn rough notes into sharp Twitter posts and threads.
@@ -34,71 +34,68 @@ const MEMORY_READ_TOOL = {
   },
 } as const;
 
-const TOPIC_PROMPTS: Record<PostTopic, string> = {
-  "day-schedule": `This is my day schedule. Convert this into a clean, engaging Twitter post.
+const TOPIC_PROMPTS: Record<string, string> = {
+  "new-tech-stack": `This is about a new technology, tool, or framework I explored. Turn it into a Twitter post.
 
-- Use bullet points or short structured lines
-- Keep language simple and human (not technical)
-- Fix grammar and remove any AI-like phrasing
-- Highlight flow of the day (morning -> night)
-- Add 1 subtle reflective line at the end
+- Lead with what the tool is and what gap it fills
+- One concrete thing it does better than the alternative
+- My honest first impression — what worked, what didn't
+- Why it's worth paying attention to (or why it isn't)
 
-Tone: calm, minimal, slightly reflective
-Avoid: hashtags overload, emojis, robotic tone`,
+Voice: technically literate, honest, not a sales pitch
+Avoid: "game-changer", generic hype, surface-level takes
+Make it feel like a signal, not noise`,
 
-  "gym-routine": `This is my gym routine/workout log. Convert this into an engaging Twitter post.
+  "ui-product-demo": `This is about a UI, product, or demo I built. Turn it into a Twitter post.
 
-- Start with a strong hook (progress, discipline, or struggle)
-- List workouts in a clean, readable format
-- Highlight intensity, weights, or improvement if present
-- Add a short takeaway (consistency, strength, mindset)
+- Hook: what it is and what it does — one line
+- Key interaction or feature that makes it interesting
+- Technical detail that was non-obvious to build
+- Optional: what to try or look at (assumes image/video attached)
 
-Tone: energetic, disciplined, slightly motivational
-Avoid: sounding like a fitness influencer cliche
-Optional: 1-2 subtle emojis max`,
+Voice: confident, product-focused, technical but accessible
+Avoid: over-explaining, listing features like a changelog
+Write for someone who builds things`,
 
-  "llm-project": `This is about a project I built using LLMs. Convert this into a Twitter post.
+  "github-daily": `Turn this GitHub activity into a sharp, high-signal Twitter post.
 
-- Start with what I built in one crisp line
-- Explain what problem it solves
-- Mention key technical aspects (without overloading)
-- Add 1 interesting insight or challenge faced
-- End with a subtle flex or learning
+Structure:
+- First line: "Working on [project name]" or "Progress update: [project name]" (infer project name from context)
+- Follow with 2–4 bullet points capturing the most meaningful technical changes
+- Each bullet must start with a strong action verb: Improved, Added, Optimized, Fixed, Refactored, Simplified, Shipped
+- Focus on impact, not just activity (what got better, faster, cleaner, or more scalable)
 
-Tone: builder-focused, sharp, slightly technical
-Audience: developers + indie hackers
-Avoid: buzzwords, generic AI hype`,
+Voice:
+- Confident senior engineer
+- Crisp, direct, no filler
+- Sounds like a builder shipping real systems, not documenting tasks
 
-  "new-tech-stack": `This is about a new tech stack/tool I learned. Convert this into a Twitter post.
+Style:
+- Use precise technical language where it adds clarity
+- Prefer specifics over vague statements (e.g., "reduced latency in X" > "improved performance")
+- Keep it tight and readable — every line should carry weight
 
-- Start with what I explored
-- Break down what it does in simple terms
-- Mention why it's interesting/useful
-- Add my personal learning or first impression
+Avoid:
+- Emojis, hashtags, hype
+- Generic phrases like "made improvements"
+- Over-explaining or storytelling
 
-Tone: curious, exploratory, honest
-Avoid: deep jargon, long explanations
-Make it feel like sharing, not teaching`,
-
-  "ui-product-demo": `This is about a UI/product/demo I built. Convert this into a Twitter post.
-
-- Start with a hook describing what it is
-- Explain what it does in 1-2 lines
-- Highlight key features or interactions
-- Keep it concise and visual-friendly
-- End with a call to action (feedback, thoughts, etc.)
-
-Tone: product-focused, crisp, confident
-Assume this will be posted with an image/video
-Avoid: over-explaining internals`,
-
-  general: `Convert this into a clean, engaging Twitter post.
-
-- Make it feel like a real human wrote it
-- Prioritize clarity, personality, and natural flow
-- Avoid generic phrases like "excited to share"
-- Keep the writing specific and grounded`,
+Goal:
+- Feels like a high-quality dev update someone would pause and read
+- Signals competence and progress in a few lines`,
 };
+
+function getTopicPrompt(topic: string): string {
+  if (TOPIC_PROMPTS[topic]) return TOPIC_PROMPTS[topic];
+  return `Convert this into a sharp, clear Twitter post about ${topic}.
+
+- Be specific — ground every claim in something concrete
+- Write like someone who actually knows this space well
+- No filler, no setup, no generic openers
+- Every sentence should carry weight
+
+Voice: confident, direct, human`;
+}
 
 const UNIVERSAL_ADD_ON = `Universal requirements:
 - Keep it under 280 characters if possible for a single tweet
@@ -115,7 +112,7 @@ Input:
 ${input}
 
 Topic instructions:
-${TOPIC_PROMPTS[topic]}
+${getTopicPrompt(topic)}
 
 Format instructions:
 - Write one tweet only
@@ -133,7 +130,7 @@ Input:
 ${input}
 
 Topic instructions:
-${TOPIC_PROMPTS[topic]}
+${getTopicPrompt(topic)}
 
 Format instructions:
 - Write a Twitter thread

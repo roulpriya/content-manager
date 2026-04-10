@@ -1,12 +1,11 @@
 import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
+// Known built-in topics — used for UI dropdowns and prompt routing.
+// Custom topics (user-defined strings) are also valid and stored as plain text.
 export const POST_TOPICS = [
-  "day-schedule",
-  "gym-routine",
-  "llm-project",
   "new-tech-stack",
   "ui-product-demo",
-  "general",
+  "github-daily",
 ] as const;
 
 export const POST_STATUSES = [
@@ -17,7 +16,7 @@ export const POST_STATUSES = [
   "rejected",
 ] as const;
 
-export type PostTopic = (typeof POST_TOPICS)[number];
+export type PostTopic = string; // built-in or user-defined custom topic
 export type PostStatus = (typeof POST_STATUSES)[number];
 
 export const posts = sqliteTable("posts", {
@@ -26,7 +25,7 @@ export const posts = sqliteTable("posts", {
   title: text("title"),
   body: text("body"),
   type: text("type", { enum: ["tweet", "thread"] }).notNull(),
-  topic: text("topic", { enum: POST_TOPICS }).notNull().default("general"),
+  topic: text("topic").notNull().default("general"),
   status: text("status", { enum: POST_STATUSES }).notNull().default("idea"),
   scheduledFor: integer("scheduled_for").notNull(),
   createdAt: integer("created_at").notNull(),
@@ -60,7 +59,7 @@ export const memories = sqliteTable(
     input: text("input").notNull(),
     title: text("title"),
     body: text("body").notNull(),
-    topic: text("topic", { enum: POST_TOPICS }).notNull(),
+    topic: text("topic").notNull(),
     type: text("type", { enum: ["tweet", "thread"] }).notNull(),
     status: text("status", { enum: POST_STATUSES }).notNull().default("generated"),
     scheduledFor: integer("scheduled_for").notNull().default(0),

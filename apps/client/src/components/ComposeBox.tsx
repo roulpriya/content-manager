@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ChevronDown, FileText, Lightbulb, LoaderCircle, ScrollText } from "lucide-react";
-import type { PostTopic } from "@content-manager/server";
 import { trpc } from "../trpc";
 
 interface Props {
@@ -10,14 +9,19 @@ interface Props {
 
 export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
   const [text, setText] = useState("");
-  const [topic, setTopic] = useState<PostTopic | "">("");
+  const [topicOption, setTopicOption] = useState(""); // known topic key or "custom"
+  const [customTopic, setCustomTopic] = useState("");
   const [days, setDays] = useState(1);
   const utils = trpc.useUtils();
+
+  const effectiveTopic = topicOption === "custom" ? customTopic.trim() : topicOption;
+  const topicReady = effectiveTopic.length > 0;
 
   const generatePost = trpc.post.generate.useMutation({
     onSuccess: (post) => {
       setText("");
-      setTopic("");
+      setTopicOption("");
+      setCustomTopic("");
       setDays(1);
       utils.post.list.invalidate();
       onPostCreated(post.id);
@@ -26,7 +30,8 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
   const generateCalendar = trpc.post.generateCalendar.useMutation({
     onSuccess: (posts) => {
       setText("");
-      setTopic("");
+      setTopicOption("");
+      setCustomTopic("");
       setDays(1);
       utils.post.list.invalidate();
       if (posts[0]) onPostCreated(posts[0].id);
@@ -52,12 +57,12 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
   }
 
   function handleGeneratePost(type: "tweet" | "thread") {
-    if (!text.trim() || isBusy || !topic) return;
+    if (!text.trim() || isBusy || !topicReady) return;
     if (days > 1) {
-      generateCalendar.mutate({ input: text.trim(), type, topic, days });
+      generateCalendar.mutate({ input: text.trim(), type, topic: effectiveTopic, days });
       return;
     }
-    generatePost.mutate({ input: text.trim(), type, topic });
+    generatePost.mutate({ input: text.trim(), type, topic: effectiveTopic });
   }
 
   return (
@@ -79,6 +84,12 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
         placeholder="What's on your mind?"
         value={text}
         onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isBusy && text.trim() && topicReady) {
+            e.preventDefault();
+            handleGeneratePost("tweet");
+          }
+        }}
         disabled={isBusy}
         autoFocus
       />
@@ -91,7 +102,18 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
           <DaysInput value={days} onChange={setDays} disabled={isBusy} />
         </div>
         <div className="flex items-center gap-2">
-          <TopicSelect value={topic} onChange={setTopic} disabled={isBusy} />
+          <TopicSelect
+            option={topicOption}
+            onOptionChange={setTopicOption}
+            custom={customTopic}
+            onCustomChange={setCustomTopic}
+            disabled={isBusy}
+          />
+          {!topicReady && text.trim().length > 0 && (
+            <p className="text-[10px] font-mono text-amber-500 tracking-wide whitespace-nowrap">
+              ↑ topic required
+            </p>
+          )}
           <div className="flex gap-1.5">
           <ActionButton
             icon={FileText}
@@ -103,7 +125,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
                   : "tweet"
             }
             onClick={() => handleGeneratePost("tweet")}
-            disabled={isBusy || !text.trim() || !topic}
+            disabled={isBusy || !text.trim() || !topicReady}
             color="amber"
           />
           <ActionButton
@@ -116,7 +138,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
                   : "thread"
             }
             onClick={() => handleGeneratePost("thread")}
-            disabled={isBusy || !text.trim() || !topic}
+            disabled={isBusy || !text.trim() || !topicReady}
             color="blue"
           />
           <ActionButton
@@ -133,12 +155,10 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
   );
 }
 
-const TOPIC_OPTIONS: Array<{ value: PostTopic; label: string }> = [
-  { value: "day-schedule", label: "Day Schedule" },
-  { value: "gym-routine", label: "Gym Routine" },
-  { value: "llm-project", label: "LLM Project" },
+const TOPIC_OPTIONS = [
   { value: "new-tech-stack", label: "New Tech Stack" },
-  { value: "ui-product-demo", label: "UI / Product / Demo" },
+  { value: "ui-product-demo",label: "UI / Product / Demo" },
+  { value: "github-daily",   label: "GitHub Daily" },
 ];
 
 const BUTTON_COLORS = {
@@ -148,31 +168,47 @@ const BUTTON_COLORS = {
 };
 
 function TopicSelect({
-  value,
-  onChange,
+  option,
+  onOptionChange,
+  custom,
+  onCustomChange,
   disabled,
 }: {
-  value: PostTopic | "";
-  onChange: (value: PostTopic | "") => void;
+  option: string;
+  onOptionChange: (value: string) => void;
+  custom: string;
+  onCustomChange: (value: string) => void;
   disabled: boolean;
 }) {
   return (
-    <div className="relative min-w-52">
-      <select
-        className="w-full appearance-none rounded-lg bg-zinc-900 px-3 py-2 pr-9 text-[11px] font-medium text-slate-300 focus:outline-none disabled:text-zinc-500"
-        value={value}
-        onChange={(e) => onChange(e.target.value as PostTopic | "")}
-        disabled={disabled}
-        aria-label="Choose post topic"
-      >
-        <option value="">Choose topic</option>
-        {TOPIC_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+    <div className="flex flex-col gap-1.5 min-w-52">
+      <div className="relative">
+        <select
+          className="w-full appearance-none rounded-lg bg-zinc-900 px-3 py-2 pr-9 text-[11px] font-medium text-slate-300 focus:outline-none disabled:text-zinc-500"
+          value={option}
+          onChange={(e) => onOptionChange(e.target.value)}
+          disabled={disabled}
+          aria-label="Choose post topic"
+        >
+          <option value="">Choose topic</option>
+          {TOPIC_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+          <option value="custom">Custom…</option>
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+      </div>
+      {option === "custom" && (
+        <input
+          type="text"
+          className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-[11px] font-medium text-slate-300 placeholder-zinc-500 focus:outline-none disabled:text-zinc-500"
+          placeholder="e.g. system design, finance, cooking"
+          value={custom}
+          onChange={(e) => onCustomChange(e.target.value)}
+          disabled={disabled}
+          autoFocus
+        />
+      )}
     </div>
   );
 }

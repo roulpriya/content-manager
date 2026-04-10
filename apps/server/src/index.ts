@@ -4,7 +4,7 @@ import { createHTTPHandler } from "@trpc/server/adapters/standalone";
 import sirv from "sirv";
 import { appRouter } from "./router/index.js";
 import { syncApprovedPostsToMemoryStore } from "./services/memory.js";
-import { startScheduler } from "./services/scheduler.js";
+import { startScheduler, runGitHubPost } from "./services/scheduler.js";
 
 export type { AppRouter } from "./router/index.js";
 export type { Post, Idea, PostTopic, Memory } from "./db/schema.js";
@@ -42,3 +42,4 @@ syncApprovedPostsToMemoryStore().then((count) => {
 });
 
 startScheduler();
+runGitHubPost();

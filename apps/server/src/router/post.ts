@@ -9,15 +9,13 @@ import {
   updateTopic,
   updateStatus,
 } from "../services/post.js";
-import { POST_TOPICS } from "../db/schema.js";
-
 export const postRouter = router({
   generate: publicProcedure
     .input(
       z.object({
         input: z.string().min(1),
         type: z.enum(["tweet", "thread"]),
-        topic: z.enum(POST_TOPICS),
+        topic: z.string().min(1),
       })
     )
     .mutation(({ input }) => createAndGenerate(input.input, input.type, input.topic)),
@@ -27,7 +25,7 @@ export const postRouter = router({
       z.object({
         input: z.string().min(1),
         type: z.enum(["tweet", "thread"]),
-        topic: z.enum(POST_TOPICS),
+        topic: z.string().min(1),
         days: z.number().min(1).max(30),
       })
     )
@@ -56,7 +54,7 @@ export const postRouter = router({
     .input(
       z.object({
         id: z.number(),
-        topic: z.enum(POST_TOPICS),
+        topic: z.string().min(1),
       })
     )
     .mutation(({ input }) => updateTopic(input.id, input.topic)),

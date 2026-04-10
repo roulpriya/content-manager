@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Check, Copy, RotateCcw, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Check, Copy, LoaderCircle, RotateCcw, X } from "lucide-react";
 import { trpc } from "../trpc";
 import type { Post, PostTopic } from "@content-manager/server";
 
@@ -11,13 +11,10 @@ const STATUS: Record<Post["status"], { label: string; color: string }> = {
   rejected:  { label: "Archived",  color: "#f87171" },
 };
 
-const TOPIC_OPTIONS: Array<{ value: PostTopic; label: string }> = [
-  { value: "day-schedule", label: "Day Schedule" },
-  { value: "gym-routine", label: "Gym Routine" },
-  { value: "llm-project", label: "LLM Project" },
+const TOPIC_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "new-tech-stack", label: "New Tech Stack" },
-  { value: "ui-product-demo", label: "UI / Product / Demo" },
-  { value: "general", label: "General" },
+  { value: "ui-product-demo",label: "UI / Product / Demo" },
+  { value: "github-daily",   label: "GitHub Daily" },
 ];
 
 interface Props {
@@ -27,6 +24,9 @@ interface Props {
 export function OutputPanel({ postId }: Props) {
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [topicSaved, setTopicSaved] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<Post["status"] | null>(null);
+  const feedbackRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();
 
   const { data: posts = [] } = trpc.post.list.useQuery({});
@@ -43,8 +43,21 @@ export function OutputPanel({ postId }: Props) {
     onSuccess: () => utils.post.list.invalidate(),
   });
   const updateTopic = trpc.post.updateTopic.useMutation({
-    onSuccess: () => utils.post.list.invalidate(),
+    onSuccess: () => {
+      utils.post.list.invalidate();
+      setTopicSaved(true);
+      setTimeout(() => setTopicSaved(false), 2000);
+    },
   });
+
+  function handleStatusUpdate(status: Post["status"]) {
+    if (!post) return;
+    setPendingStatus(status);
+    updateStatus.mutate(
+      { id: post.id, status },
+      { onSettled: () => setPendingStatus(null) }
+    );
+  }
 
   async function handleCopy() {
     if (!post?.body) return;
@@ -59,25 +72,42 @@ export function OutputPanel({ postId }: Props) {
   const lines = post.body?.split("\n").filter(Boolean) ?? [];
 
   return (
-    <div className="flex flex-col p-6">
+    <div
+      className="flex flex-col p-6"
+      onKeyDown={(e) => {
+        if (
+          e.key === "r" && !e.metaKey && !e.ctrlKey &&
+          document.activeElement?.tagName !== "INPUT" &&
+          document.activeElement?.tagName !== "TEXTAREA" &&
+          document.activeElement?.tagName !== "SELECT"
+        ) {
+          e.preventDefault();
+          feedbackRef.current?.focus();
+        }
+      }}
+    >
       <div className="flex items-center justify-end mb-8">
         <div className="flex items-center gap-2">
           {post.status === "generated" && (
             <>
               <button
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-400/20 bg-emerald-950 text-[11px] font-semibold text-emerald-400 hover:bg-emerald-900 disabled:opacity-50 transition-colors"
-                onClick={() => updateStatus.mutate({ id: post.id, status: "accepted" })}
+                onClick={() => handleStatusUpdate("accepted")}
                 disabled={updateStatus.isPending}
               >
-                <Check className="w-3.5 h-3.5" />
+                {pendingStatus === "accepted"
+                  ? <LoaderCircle className="w-3.5 h-3.5 animate-spin" />
+                  : <Check className="w-3.5 h-3.5" />}
                 accept
               </button>
               <button
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-400/20 bg-red-950 text-[11px] font-semibold text-red-400 hover:bg-red-900 disabled:opacity-50 transition-colors"
-                onClick={() => updateStatus.mutate({ id: post.id, status: "rejected" })}
+                onClick={() => handleStatusUpdate("rejected")}
                 disabled={updateStatus.isPending}
               >
-                <X className="w-3.5 h-3.5" />
+                {pendingStatus === "rejected"
+                  ? <LoaderCircle className="w-3.5 h-3.5 animate-spin" />
+                  : <X className="w-3.5 h-3.5" />}
                 reject
               </button>
             </>
@@ -86,18 +116,22 @@ export function OutputPanel({ postId }: Props) {
             <>
               <button
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-violet-400/20 bg-violet-950 text-[11px] font-semibold text-violet-300 hover:bg-violet-900 disabled:opacity-50 transition-colors"
-                onClick={() => updateStatus.mutate({ id: post.id, status: "published" })}
+                onClick={() => handleStatusUpdate("published")}
                 disabled={updateStatus.isPending}
               >
-                <Check className="w-3.5 h-3.5" />
+                {pendingStatus === "published"
+                  ? <LoaderCircle className="w-3.5 h-3.5 animate-spin" />
+                  : <Check className="w-3.5 h-3.5" />}
                 publish
               </button>
               <button
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-400/20 bg-red-950 text-[11px] font-semibold text-red-400 hover:bg-red-900 disabled:opacity-50 transition-colors"
-                onClick={() => updateStatus.mutate({ id: post.id, status: "rejected" })}
+                onClick={() => handleStatusUpdate("rejected")}
                 disabled={updateStatus.isPending}
               >
-                <X className="w-3.5 h-3.5" />
+                {pendingStatus === "rejected"
+                  ? <LoaderCircle className="w-3.5 h-3.5 animate-spin" />
+                  : <X className="w-3.5 h-3.5" />}
                 archive
               </button>
             </>
@@ -153,6 +187,11 @@ export function OutputPanel({ postId }: Props) {
             </option>
           ))}
         </select>
+        {topicSaved && (
+          <span className="text-[10px] font-mono text-emerald-400 tracking-widest uppercase">
+            saved
+          </span>
+        )}
       </div>
 
       <div className="flex-1 mb-10">
@@ -174,11 +213,15 @@ export function OutputPanel({ postId }: Props) {
       </div>
 
       <div className="pt-6">
-        <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-3">
-          regenerate
-        </p>
+        <div className="flex items-center gap-3 mb-3">
+          <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
+            regenerate
+          </p>
+          <span className="text-[10px] font-mono text-slate-600">press r</span>
+        </div>
         <div className="flex gap-2">
           <input
+            ref={feedbackRef}
             type="text"
             className="flex-1 bg-zinc-900 rounded-lg px-3 py-2 text-[13px] font-mono text-slate-200 placeholder-zinc-400 focus:outline-none transition-colors"
             placeholder="feedback (optional)"

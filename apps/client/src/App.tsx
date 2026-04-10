@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Brain } from "lucide-react";
 import {
   Navigate,
   Route,
@@ -11,11 +11,13 @@ import { ComposeBox } from "./components/ComposeBox";
 import { FeedList } from "./components/FeedList";
 import { OutputPanel } from "./components/OutputPanel";
 import { IdeaPanel } from "./components/IdeaPanel";
+import { MemoryPanel } from "./components/MemoryPanel";
 
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const isHome = location.pathname === "/";
+  const isMemories = location.pathname === "/memories";
 
   return (
     <div className="flex flex-col max-w-2xl mx-auto w-full min-h-dvh">
@@ -37,13 +39,22 @@ export default function App() {
             </span>
           </div>
         </div>
-        <span className="text-[10px] font-mono text-slate-500 tracking-widest uppercase">
-          content manager
-        </span>
+        <button
+          className={`inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider transition-colors ${
+            isMemories
+              ? "text-amber-400"
+              : "text-slate-500 hover:text-slate-300"
+          }`}
+          onClick={() => navigate(isMemories ? "/" : "/memories")}
+        >
+          <Brain className="h-3.5 w-3.5" />
+          memories
+        </button>
       </header>
 
       <Routes>
         <Route path="/" element={<HomeRoute />} />
+        <Route path="/memories" element={<MemoryPanel />} />
         <Route path="/posts/:postId" element={<PostRoute />} />
         <Route path="/ideas/:ideaId" element={<IdeaRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />

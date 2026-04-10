@@ -9,7 +9,12 @@ interface Props {
 export function IdeaPanel({ ideaId }: Props) {
   const utils = trpc.useUtils();
 
-  const { data: ideas = [] } = trpc.idea.list.useQuery();
+  const { data: ideas = [] } = trpc.idea.list.useQuery(undefined, {
+    refetchInterval: (query) => {
+      if (query.state.data?.some((i) => i.status === "enriching")) return 3000;
+      return false;
+    },
+  });
   const idea = ideas.find((i) => i.id === ideaId);
 
   const enrichMutation = trpc.idea.enrich.useMutation({

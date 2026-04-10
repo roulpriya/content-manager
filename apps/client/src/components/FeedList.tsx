@@ -51,6 +51,7 @@ interface Props {
 
 export function FeedList({ onSelectPost, onSelectIdea }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const utils = trpc.useUtils();
 
   const { data: posts = [], isLoading: postsLoading } = trpc.post.list.useQuery({});
@@ -134,6 +135,14 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
       : b.createdAt - a.createdAt
   );
 
+  const counts: Record<Filter, number> = {
+    all: posts.filter((p) => p.status !== "rejected").length + ideas.length,
+    posts: posts.filter((p) => p.status !== "rejected").length,
+    calendar: posts.filter((p) => p.status !== "rejected").length,
+    ideas: ideas.length,
+    archive: posts.filter((p) => p.status === "rejected").length,
+  };
+
   return (
     <div className="flex flex-col">
       {/* Filter tabs */}
@@ -149,6 +158,9 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
             onClick={() => setFilter(f)}
           >
             {f}
+            {!isLoading && counts[f] > 0 && (
+              <span className="ml-1.5 tabular-nums">{counts[f]}</span>
+            )}
           </button>
         ))}
       </div>
@@ -175,6 +187,9 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
             onClick={() =>
               item.kind === "post" ? onSelectPost(item.id) : onSelectIdea(item.id)
             }
+            onMouseLeave={() => {
+              if (pendingDeleteId === `${item.kind}-${item.id}`) setPendingDeleteId(null);
+            }}
           >
             {/* Status dot */}
             <span
@@ -218,18 +233,33 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
             </div>
 
             {/* Delete */}
-            <button
-              className="absolute top-4 right-4 text-zinc-900 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-              onClick={(e) => {
-                e.stopPropagation();
-                item.kind === "post"
-                  ? deletePost.mutate({ id: item.id })
-                  : deleteIdea.mutate({ id: item.id });
-              }}
-              aria-label={`Delete ${item.kind}`}
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {pendingDeleteId === `${item.kind}-${item.id}` ? (
+              <button
+                className="absolute top-4 right-4 flex items-center gap-1 text-red-400 opacity-0 group-hover:opacity-100 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  item.kind === "post"
+                    ? deletePost.mutate({ id: item.id })
+                    : deleteIdea.mutate({ id: item.id });
+                  setPendingDeleteId(null);
+                }}
+                aria-label="Confirm delete"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="text-[10px] font-mono font-semibold uppercase tracking-widest">sure?</span>
+              </button>
+            ) : (
+              <button
+                className="absolute top-4 right-4 text-zinc-900 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPendingDeleteId(`${item.kind}-${item.id}`);
+                }}
+                aria-label={`Delete ${item.kind}`}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         ))}
       </div>

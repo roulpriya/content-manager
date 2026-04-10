@@ -1,5 +1,7 @@
 import { z } from "zod";
 import {
+  deleteMemory,
+  listMemories,
   readMemoryDataDictionaryTool,
   runMemorySqlTool,
   writeMemoryDataDictionaryTool,
@@ -7,6 +9,14 @@ import {
 import { publicProcedure, router } from "./trpc.js";
 
 export const memoryRouter = router({
+  list: publicProcedure
+    .input(z.object({ limit: z.number().optional() }).optional())
+    .query(({ input }) => listMemories(input?.limit)),
+
+  delete: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(({ input }) => deleteMemory(input.id)),
+
   runSql: publicProcedure
     .input(z.object({
       sql: z.string().min(1),

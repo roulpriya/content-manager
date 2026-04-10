@@ -167,6 +167,12 @@ function migrateLegacyMemoryData(
     return;
   }
 
+  const legacyMemoryColumns = applicationSqlite
+    .prepare("PRAGMA table_info(memories)")
+    .all() as Array<{ name: string }>;
+  const hasLegacyMemoryColumn = (columnName: string) =>
+    legacyMemoryColumns.some((column) => column.name === columnName);
+
   const legacyMemories = applicationSqlite
     .prepare(`
       SELECT
@@ -176,8 +182,16 @@ function migrateLegacyMemoryData(
         body,
         topic,
         type,
-        COALESCE(status, 'generated') AS status,
-        COALESCE(scheduled_for, 0) AS scheduled_for,
+        ${
+          hasLegacyMemoryColumn("status")
+            ? "COALESCE(status, 'generated')"
+            : "'generated'"
+        } AS status,
+        ${
+          hasLegacyMemoryColumn("scheduled_for")
+            ? "COALESCE(scheduled_for, 0)"
+            : "0"
+        } AS scheduled_for,
         searchable_text,
         created_at,
         updated_at
