@@ -93,11 +93,12 @@ function PostRoute() {
 
 function IdeaRoute() {
   const { ideaId } = useParams();
+  const navigate = useNavigate();
   const id = Number(ideaId);
 
   if (!Number.isInteger(id) || id <= 0) {
     return <Navigate to="/" replace />;
   }
 
-  return <IdeaPanel ideaId={id} />;
+  return <IdeaPanel ideaId={id} onPostCreated={(postId) => navigate(`/posts/${postId}`)} />;
 }

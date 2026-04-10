@@ -1,12 +1,21 @@
-import { ExternalLink, LoaderCircle, RotateCcw, Search } from "lucide-react";
+import { useState } from "react";
+import { ExternalLink, FileText, LoaderCircle, RotateCcw, ScrollText, Search } from "lucide-react";
 import { trpc } from "../trpc";
 import type { EnrichedContent } from "@content-manager/server";
 
+const TOPIC_OPTIONS = [
+  { value: "new-tech-stack", label: "Tech Stack" },
+  { value: "ui-product-demo", label: "UI / Demo" },
+  { value: "github-daily", label: "GitHub" },
+];
+
 interface Props {
   ideaId: number;
+  onPostCreated: (id: number) => void;
 }
 
-export function IdeaPanel({ ideaId }: Props) {
+export function IdeaPanel({ ideaId, onPostCreated }: Props) {
+  const [postTopic, setPostTopic] = useState("");
   const utils = trpc.useUtils();
 
   const { data: ideas = [] } = trpc.idea.list.useQuery(undefined, {
@@ -21,12 +30,36 @@ export function IdeaPanel({ ideaId }: Props) {
     onSuccess: () => utils.idea.list.invalidate(),
   });
 
+  const generatePost = trpc.post.generate.useMutation({
+    onSuccess: (post) => {
+      utils.post.list.invalidate();
+      onPostCreated(post.id);
+    },
+  });
+
   if (!idea) return null;
+
+  function handleGenerate(type: "tweet" | "thread") {
+    if (!postTopic || !idea) return;
+    generatePost.mutate({ input: idea.topic, type, topic: postTopic });
+  }
+
+  const isEnriched = idea.status === "enriched";
 
   return (
     <div className="flex flex-col p-6">
-      <div className="flex justify-end mb-8">
-        <span className="text-[10px] font-mono text-slate-500">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 mb-7">
+        <div className="min-w-0">
+          <p className="text-[10px] font-mono uppercase tracking-widest text-amber-500 mb-2">
+            Research
+          </p>
+          <h1 className="text-base font-semibold text-slate-200 leading-snug">{idea.topic}</h1>
+          {idea.notes && (
+            <p className="mt-2 text-sm text-slate-500 leading-relaxed">{idea.notes}</p>
+          )}
+        </div>
+        <span className="shrink-0 text-[10px] font-mono text-slate-600">
           {new Date(idea.createdAt).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
@@ -35,16 +68,7 @@ export function IdeaPanel({ ideaId }: Props) {
         </span>
       </div>
 
-      <div className="mb-7">
-        <p className="text-[10px] font-mono uppercase tracking-widest text-amber-500 mb-2">
-          Research
-        </p>
-        <h1 className="text-base font-semibold text-slate-200 leading-snug">{idea.topic}</h1>
-        {idea.notes && (
-          <p className="mt-2 text-sm text-slate-500 leading-relaxed">{idea.notes}</p>
-        )}
-      </div>
-
+      {/* Research status blocks */}
       {idea.status === "pending" && (
         <div className="rounded-2xl bg-zinc-900/70 p-5 flex flex-col gap-4">
           <p className="text-sm text-slate-500">No research yet.</p>
@@ -87,10 +111,72 @@ export function IdeaPanel({ ideaId }: Props) {
         </div>
       )}
 
-      {idea.status === "enriched" && idea.enrichedContent && (
-        <EnrichedView
-          content={JSON.parse(idea.enrichedContent) as EnrichedContent}
-        />
+      {isEnriched && idea.enrichedContent && (
+        <>
+          <EnrichedView content={JSON.parse(idea.enrichedContent) as EnrichedContent} />
+
+          {/* Re-research + Generate Post */}
+          <div className="mt-10 pt-6 border-t border-zinc-800/60 flex flex-col gap-6">
+            {/* Re-research */}
+            <button
+              className="self-start inline-flex items-center gap-1.5 text-[10px] font-mono text-zinc-600 hover:text-slate-400 transition-colors"
+              onClick={() => enrichMutation.mutate({ id: idea.id })}
+              disabled={enrichMutation.isPending}
+            >
+              <RotateCcw className={`w-3 h-3 ${enrichMutation.isPending ? "animate-spin" : ""}`} />
+              {enrichMutation.isPending ? "researching…" : "re-research"}
+            </button>
+
+            {/* Generate Post */}
+            <div>
+              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-3">
+                turn into post
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Topic chips */}
+                {TOPIC_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setPostTopic((t) => (t === opt.value ? "" : opt.value))}
+                    disabled={generatePost.isPending}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide transition-colors ${
+                      postTopic === opt.value
+                        ? "bg-amber-500 text-zinc-950"
+                        : "bg-zinc-800 text-slate-400 hover:text-slate-200 hover:bg-zinc-700"
+                    } disabled:opacity-40`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+
+                <span className="w-px h-4 bg-zinc-800" />
+
+                <button
+                  onClick={() => handleGenerate("tweet")}
+                  disabled={generatePost.isPending || !postTopic}
+                  title={!postTopic ? "Pick a topic first" : undefined}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide bg-amber-500 text-zinc-950 hover:bg-amber-400 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all active:scale-95"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  {generatePost.isPending && generatePost.variables?.type === "tweet"
+                    ? "writing…"
+                    : "tweet"}
+                </button>
+                <button
+                  onClick={() => handleGenerate("thread")}
+                  disabled={generatePost.isPending || !postTopic}
+                  title={!postTopic ? "Pick a topic first" : undefined}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide bg-blue-400 text-zinc-950 hover:bg-blue-300 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all active:scale-95"
+                >
+                  <ScrollText className="w-3.5 h-3.5" />
+                  {generatePost.isPending && generatePost.variables?.type === "thread"
+                    ? "writing…"
+                    : "thread"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -157,33 +243,6 @@ function urlToFilename(url: string): string {
   } catch {
     return "";
   }
-}
-
-const MD_LINK = /\[{1,2}([^\]]+)\]{1,2}\((https?:\/\/[^)]+)\)/g;
-
-function parseMarkdownLinks(text: string): React.ReactNode[] {
-  const nodes: React.ReactNode[] = [];
-  let last = 0;
-  let match: RegExpExecArray | null;
-  MD_LINK.lastIndex = 0;
-  while ((match = MD_LINK.exec(text)) !== null) {
-    if (match.index > last) nodes.push(text.slice(last, match.index));
-    nodes.push(
-      <a
-        key={match.index}
-        href={match[2]}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {match[1]}
-      </a>
-    );
-    last = match.index + match[0].length;
-  }
-  if (last < text.length) nodes.push(text.slice(last));
-  return nodes;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
