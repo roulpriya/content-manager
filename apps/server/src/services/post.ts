@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { posts, type Post, type PostTopic } from "../db/schema.js";
 import { generateCalendarContent, generateContent } from "./content.js";
-import { deleteMemoryBySourcePostId, saveApprovedPostToMemory } from "./memory.js";
+import { askMemoryWriteAgent, deleteMemoryBySourcePostId } from "./memory.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -39,6 +39,11 @@ export async function createAndGenerate(
     .set({ title, body, status: "generated", updatedAt: Date.now() })
     .where(eq(posts.id, post!.id))
     .returning();
+
+  await askMemoryWriteAgent({
+    event: "prompted_post",
+    post: updated!,
+  });
 
   return updated!;
 }
@@ -84,6 +89,11 @@ export async function createCalendar(
       .where(eq(posts.id, post!.id))
       .returning();
 
+    await askMemoryWriteAgent({
+      event: "scheduled_post",
+      post: updated!,
+    });
+
     created.push(updated!);
   }
 
@@ -106,6 +116,11 @@ export async function regenerate(id: number, feedback?: string): Promise<Post> {
     .set({ title, body, status: "generated", updatedAt: Date.now() })
     .where(eq(posts.id, id))
     .returning();
+
+  await askMemoryWriteAgent({
+    event: "prompted_post",
+    post: updated!,
+  });
 
   return updated!;
 }
@@ -131,8 +146,11 @@ export async function updateStatus(
     .where(eq(posts.id, id))
     .returning();
   if (!updated) throw new Error(`Post ${id} not found`);
-  if (status === "accepted" && updated.body) {
-    await saveApprovedPostToMemory(updated);
+  if (status === "accepted") {
+    await askMemoryWriteAgent({
+      event: "approved_post",
+      post: updated,
+    });
   }
   if (status === "rejected") {
     await deleteMemoryBySourcePostId(updated.id);

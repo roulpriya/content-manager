@@ -1,6 +1,6 @@
 import { MODEL, openai } from "../lib/llm.js";
 import type { PostTopic } from "../db/schema.js";
-import { askMemoryAgent } from "./memory.js";
+import { askMemoryReadAgent } from "./memory.js";
 
 const SYSTEM_PROMPT = `You turn rough notes into sharp Twitter posts and threads.
 
@@ -17,6 +17,22 @@ Do not sound like a template.
 Keep things readable, social-media native, and close to the user's existing writing style when memory context is available.
 
 Always respond with valid JSON in the exact shape requested.`;
+
+const MEMORY_READ_TOOL = {
+  type: "function",
+  function: {
+    name: "memoryRead",
+    description:
+      "Ask the memory read agent for prior style/context signals from stored post memories before writing.",
+    parameters: {
+      type: "object",
+      properties: {
+        question: { type: "string" },
+      },
+      required: ["question"],
+    },
+  },
+} as const;
 
 const TOPIC_PROMPTS: Record<PostTopic, string> = {
   "day-schedule": `This is my day schedule. Convert this into a clean, engaging Twitter post.
@@ -139,31 +155,9 @@ export async function generateContent(
   topic: PostTopic,
   feedback?: string
 ): Promise<{ title: string; body: string }> {
-  const memoryAnswer = await askMemoryAgent(`
-Question:
-I am generating a ${type} for the topic "${topic}".
-New input:
-${input}
-
-Find the most relevant approved-post memories that could help with:
-1. continuity, progress updates, repeated themes, or project context
-2. the user's actual writing style, phrasing rhythm, hook style, and sentence shape
-
-Return a compact answer for a writing agent with two sections when possible:
-- Style patterns
-- Relevant past context
-
-Only include patterns that are clearly visible in prior memories.
-Do not invent a style.
-If nothing useful exists, answer exactly: NO_RELEVANT_MEMORY
-`);
   const basePrompt =
     type === "tweet" ? TWEET_PROMPT(input, topic) : THREAD_PROMPT(input, topic);
   const promptSections = [basePrompt];
-
-  if (memoryAnswer && memoryAnswer !== "NO_RELEVANT_MEMORY") {
-    promptSections.push(`Use this memory-derived style and context if relevant:\n${memoryAnswer}`);
-  }
 
   if (feedback) {
     promptSections.push(
@@ -173,21 +167,55 @@ If nothing useful exists, answer exactly: NO_RELEVANT_MEMORY
 
   const prompt = promptSections.join("\n\n");
 
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: prompt },
-    ],
-    response_format: { type: "json_object" },
-    temperature: 0.8,
-  });
+  const messages: any[] = [
+    {
+      role: "system",
+      content: `${SYSTEM_PROMPT}
 
-  const content = response.choices[0]?.message?.content;
-  if (!content) throw new Error("No content returned from LLM");
+You may call the memoryRead tool when prior approved or scheduled post context would improve style matching or continuity.
+Do not call it unless it will materially help this draft.`,
+    },
+    { role: "user", content: prompt },
+  ];
 
-  const parsed = JSON.parse(content) as { title: string; body: string };
-  return parsed;
+  for (let i = 0; i < 4; i += 1) {
+    const response = await openai.chat.completions.create({
+      model: MODEL,
+      messages,
+      tools: [MEMORY_READ_TOOL as any],
+      tool_choice: "auto",
+      response_format: { type: "json_object" },
+      temperature: 0.8,
+    });
+
+    const message = response.choices[0]?.message;
+    if (!message) {
+      throw new Error("No content returned from LLM");
+    }
+
+    messages.push(message);
+
+    if (!message.tool_calls || message.tool_calls.length === 0) {
+      const content = message.content;
+      if (!content) throw new Error("No content returned from LLM");
+      return JSON.parse(content) as { title: string; body: string };
+    }
+
+    for (const toolCall of message.tool_calls) {
+      const args = toolCall.function.arguments
+        ? JSON.parse(toolCall.function.arguments)
+        : {};
+      const memoryAnswer = await askMemoryReadAgent(args.question ?? "");
+
+      messages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: memoryAnswer,
+      });
+    }
+  }
+
+  throw new Error("Content generation exceeded tool-call limit");
 }
 
 export async function generateCalendarContent(

@@ -42,6 +42,8 @@ sqlite.exec(`
     body TEXT NOT NULL,
     topic TEXT NOT NULL,
     type TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'generated',
+    scheduled_for INTEGER NOT NULL DEFAULT 0,
     searchable_text TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
@@ -53,6 +55,22 @@ sqlite.exec(`
     updated_at INTEGER NOT NULL
   );
 `);
+
+const memoryColumns = sqlite
+  .prepare("PRAGMA table_info(memories)")
+  .all() as Array<{ name: string }>;
+
+if (!memoryColumns.some((column) => column.name === "status")) {
+  sqlite.exec(
+    "ALTER TABLE memories ADD COLUMN status TEXT NOT NULL DEFAULT 'generated';"
+  );
+}
+
+if (!memoryColumns.some((column) => column.name === "scheduled_for")) {
+  sqlite.exec(
+    "ALTER TABLE memories ADD COLUMN scheduled_for INTEGER NOT NULL DEFAULT 0;"
+  );
+}
 
 const postColumns = sqlite
   .prepare("PRAGMA table_info(posts)")
@@ -81,17 +99,22 @@ const dictionaryRows = [
   {
     key: "memories.table",
     value:
-      "Table memories stores approved-post memory records. Columns: id, source_post_id, input, title, body, topic, type, searchable_text, created_at, updated_at.",
+      "Table memories stores one upserted memory snapshot per source post. Columns: id, source_post_id, input, title, body, topic, type, status, scheduled_for, searchable_text, created_at, updated_at.",
   },
   {
-    key: "memory.tools.read",
+    key: "memory.agent.read",
     value:
-      "Read tool supports dictionary lookup, listing recent memories, fetching a memory by id, and keyword search filtered by topic.",
+      "Memory read agent is exposed to content-generation agents as a tool call. It should consult the data dictionary before making schema assumptions and return concise style/context summaries.",
   },
   {
-    key: "memory.tools.write",
+    key: "memory.agent.write",
     value:
-      "Write tool supports saving or upserting memory rows, deleting a memory row, and syncing approved posts into memory storage.",
+      "Memory write agent runs on post generation, approval, and scheduling. It upserts the latest memory snapshot for a source post and keeps the data dictionary aligned with memory semantics.",
+  },
+  {
+    key: "memories.statuses",
+    value:
+      "Memory snapshots may reflect generated, accepted, published, or rejected post states. Content-generation agents should prefer accepted or published memories when inferring writing style.",
   },
 ];
 

@@ -9,7 +9,16 @@ export const POST_TOPICS = [
   "general",
 ] as const;
 
+export const POST_STATUSES = [
+  "idea",
+  "generated",
+  "accepted",
+  "published",
+  "rejected",
+] as const;
+
 export type PostTopic = (typeof POST_TOPICS)[number];
+export type PostStatus = (typeof POST_STATUSES)[number];
 
 export const posts = sqliteTable("posts", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -18,9 +27,7 @@ export const posts = sqliteTable("posts", {
   body: text("body"),
   type: text("type", { enum: ["tweet", "thread"] }).notNull(),
   topic: text("topic", { enum: POST_TOPICS }).notNull().default("general"),
-  status: text("status", { enum: ["idea", "generated", "accepted", "published", "rejected"] })
-    .notNull()
-    .default("idea"),
+  status: text("status", { enum: POST_STATUSES }).notNull().default("idea"),
   scheduledFor: integer("scheduled_for").notNull(),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
@@ -55,6 +62,8 @@ export const memories = sqliteTable(
     body: text("body").notNull(),
     topic: text("topic", { enum: POST_TOPICS }).notNull(),
     type: text("type", { enum: ["tweet", "thread"] }).notNull(),
+    status: text("status", { enum: POST_STATUSES }).notNull().default("generated"),
+    scheduledFor: integer("scheduled_for").notNull().default(0),
     searchableText: text("searchable_text").notNull(),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
