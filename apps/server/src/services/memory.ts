@@ -1,5 +1,5 @@
 import { MODEL, openai } from "../lib/llm.js";
-import { rawSqlite } from "../db/index.js";
+import { rawAppSqlite, rawMemorySqlite } from "../db/index.js";
 import type { Memory, Post, PostStatus, PostTopic } from "../db/schema.js";
 import { fetchRecentGitHubActivity, formatGitHubActivityForPrompt } from "./github.js";
 
@@ -110,7 +110,7 @@ function formatDictionaryRows(rows: DictionaryRow[]): string {
 
 class MemoryStore {
   list(limit = 50): Memory[] {
-    const rows = rawSqlite
+    const rows = rawMemorySqlite
       .prepare(`
         SELECT
           id,
@@ -135,7 +135,7 @@ class MemoryStore {
   }
 
   getById(id: number): Memory | null {
-    const row = rawSqlite
+    const row = rawMemorySqlite
       .prepare(`
         SELECT
           id,
@@ -159,16 +159,16 @@ class MemoryStore {
   }
 
   delete(id: number): void {
-    rawSqlite.prepare("DELETE FROM memories WHERE id = ?").run(id);
+    rawMemorySqlite.prepare("DELETE FROM memories WHERE id = ?").run(id);
   }
 
   deleteBySourcePostId(sourcePostId: number): void {
-    rawSqlite.prepare("DELETE FROM memories WHERE source_post_id = ?").run(sourcePostId);
+    rawMemorySqlite.prepare("DELETE FROM memories WHERE source_post_id = ?").run(sourcePostId);
   }
 
   search(query: string, topic?: PostTopic, limit = 10): Memory[] {
     const base = topic
-      ? (rawSqlite
+      ? (rawMemorySqlite
           .prepare(`
             SELECT
               id,
@@ -188,7 +188,7 @@ class MemoryStore {
             ORDER BY updated_at DESC
           `)
           .all(topic) as MemoryRow[])
-      : (rawSqlite
+      : (rawMemorySqlite
           .prepare(`
             SELECT
               id,
@@ -280,7 +280,7 @@ class MemoryStore {
     } as Pick<Post, "input" | "title" | "body" | "topic" | "status">);
 
     if (typeof input.sourcePostId === "number") {
-      rawSqlite
+      rawMemorySqlite
         .prepare(`
           INSERT INTO memories (
             source_post_id, input, title, body, topic, type, status, scheduled_for, searchable_text, created_at, updated_at
@@ -313,7 +313,7 @@ class MemoryStore {
       return;
     }
 
-    rawSqlite
+    rawMemorySqlite
       .prepare(`
         INSERT INTO memories (
           source_post_id, input, title, body, topic, type, status, scheduled_for, searchable_text, created_at, updated_at
@@ -337,7 +337,7 @@ class MemoryStore {
 
   syncPosts(statuses: PostStatus[] = ["accepted", "published"]): number {
     const placeholders = statuses.map(() => "?").join(", ");
-    const rows = rawSqlite
+    const rows = rawAppSqlite
       .prepare(`
         SELECT
           id,
@@ -385,7 +385,7 @@ class MemoryStore {
   }
 
   runSql(sql: string, params: unknown[] = []): RunSqlResult {
-    const statement = rawSqlite.prepare(sql);
+    const statement = rawMemorySqlite.prepare(sql);
     if ((statement as { reader?: boolean }).reader) {
       return {
         kind: "rows",
@@ -402,7 +402,7 @@ class MemoryStore {
   }
 
   readDataDictionary(): DictionaryRow[] {
-    return rawSqlite
+    return rawMemorySqlite
       .prepare(`
         SELECT key, value, updated_at AS updatedAt
         FROM memory_data_dictionary
@@ -415,10 +415,10 @@ class MemoryStore {
     const now = Date.now();
 
     if (replace) {
-      rawSqlite.prepare("DELETE FROM memory_data_dictionary").run();
+      rawMemorySqlite.prepare("DELETE FROM memory_data_dictionary").run();
     }
 
-    const upsert = rawSqlite.prepare(`
+    const upsert = rawMemorySqlite.prepare(`
       INSERT INTO memory_data_dictionary (key, value, updated_at)
       VALUES (?, ?, ?)
       ON CONFLICT(key) DO UPDATE SET
@@ -456,6 +456,11 @@ class MemoryStore {
         key: "memories.statuses",
         value:
           "Memories.status mirrors the current post lifecycle snapshot. Rejected memories should generally be excluded from generation context.",
+      },
+      {
+        key: "memory.tools.github",
+        value:
+          "GitHub read tool fetches recent repositories, pull requests, and commits for the configured GitHub account using GITHUB_TOKEN and optional GITHUB_USERNAME.",
       },
     ]);
   }
