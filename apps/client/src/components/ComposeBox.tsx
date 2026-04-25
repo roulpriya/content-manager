@@ -80,7 +80,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated, onArticleCreated }: P
       {isBusy && (
         <div className="flex items-center gap-2 mb-3">
           <LoaderCircle className="w-3.5 h-3.5 text-amber-500 animate-spin" />
-          <span className="text-[10px] font-mono text-amber-500 tracking-wider">
+          <span className="text-[10px] text-amber-500 tracking-wider">
             {isGenerating
               ? `writing ${generatePost.variables?.type}…`
               : isWritingArticle
@@ -91,7 +91,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated, onArticleCreated }: P
       )}
 
       <textarea
-        className="w-full bg-zinc-900 rounded-xl px-4 py-3 font-mono text-[13px] text-slate-200 placeholder-zinc-400 resize-none focus:outline-none leading-relaxed tracking-wide"
+        className="w-full bg-zinc-900/70 border border-zinc-800 rounded-xl px-4 py-3.5 text-[14px] text-slate-200 placeholder-zinc-600 resize-none focus:outline-none focus:border-amber-500/40 focus:bg-zinc-900 leading-relaxed transition-colors duration-200"
         rows={4}
         placeholder="What's on your mind?"
         value={text}
@@ -102,7 +102,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated, onArticleCreated }: P
 
       <div className="flex items-center justify-between gap-4 pt-4 mt-2">
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-mono text-slate-500 tabular-nums select-none">
+          <span className="text-[10px] text-slate-500 tabular-nums select-none">
             {text.length > 0 ? `${text.length}` : "·"}
           </span>
           <DaysInput value={days} onChange={setDays} disabled={isBusy} />
@@ -212,7 +212,7 @@ function DaysInput({
   disabled: boolean;
 }) {
   return (
-    <label className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-slate-500">
+    <label className="inline-flex items-center gap-2 text-[10px] uppercase tracking-widest text-slate-500">
       days
       <input
         type="number"

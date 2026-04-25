@@ -24,7 +24,7 @@ export default function App() {
         <div className="flex items-center gap-3">
           {!isHome && (
             <button
-              className="inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors"
+              className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors"
               onClick={() => navigate("/")}
             >
               <ArrowLeft className="h-3.5 w-3.5" />
@@ -32,13 +32,13 @@ export default function App() {
             </button>
           )}
           <div className="flex items-center gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            <span className="text-xs font-semibold tracking-[0.18em] uppercase text-slate-200">
+            <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)]" />
+            <span className="text-sm font-bold tracking-[0.15em] uppercase text-slate-100">
               Quill
             </span>
           </div>
         </div>
-        <span className="text-[10px] font-mono text-slate-500 tracking-widest uppercase">
+        <span className="text-[10px] text-slate-500 tracking-widest uppercase">
           content manager
         </span>
       </header>

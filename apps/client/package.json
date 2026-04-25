@@ -12,7 +12,9 @@
   "dependencies": {
     "@content-manager/server": "*",
     "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/lora": "^5.2.8",
     "@fontsource/outfit": "^5.2.8",
+    "@fontsource/syne": "^5.2.7",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-query": "^5.0.0",
     "@trpc/client": "^11.0.0",

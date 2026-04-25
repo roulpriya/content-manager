@@ -1,13 +1,34 @@
+@import "@fontsource/syne/400.css";
+@import "@fontsource/syne/500.css";
+@import "@fontsource/syne/600.css";
+@import "@fontsource/syne/700.css";
+@import "@fontsource/lora/400.css";
+@import "@fontsource/lora/500.css";
+@import "@fontsource/lora/600.css";
+
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Outfit', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Syne', sans-serif;
+  --font-serif: 'Lora', serif;
 }
 
 body {
-  @apply bg-zinc-950 text-slate-200;
+  @apply text-slate-200;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #09090b;
+  background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(245, 158, 11, 0.06) 0%, transparent 70%);
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 2px;
 }
