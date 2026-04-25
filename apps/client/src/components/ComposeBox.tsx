@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { ChevronDown, FileText, Lightbulb, LoaderCircle, ScrollText } from "lucide-react";
+import { ChevronDown, FileText, Lightbulb, LoaderCircle, NotebookPen, ScrollText } from "lucide-react";
 import type { PostTopic } from "@content-manager/server";
 import { trpc } from "../trpc";
 
 interface Props {
   onPostCreated: (id: number) => void;
   onIdeaCreated: (id: number) => void;
+  onArticleCreated: (id: number) => void;
 }
 
-export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
+export function ComposeBox({ onPostCreated, onIdeaCreated, onArticleCreated }: Props) {
   const [text, setText] = useState("");
   const [topic, setTopic] = useState<PostTopic | "">("");
   const [days, setDays] = useState(1);
@@ -38,9 +39,18 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
     onSuccess: () => utils.idea.list.invalidate(),
   });
 
+  const generateArticle = trpc.article.generate.useMutation({
+    onSuccess: (article) => {
+      setText("");
+      utils.article.list.invalidate();
+      onArticleCreated(article.id);
+    },
+  });
+
   const isGenerating = generatePost.isPending || generateCalendar.isPending;
   const isResearching = createIdea.isPending || enrichIdea.isPending;
-  const isBusy = isGenerating || isResearching;
+  const isWritingArticle = generateArticle.isPending;
+  const isBusy = isGenerating || isResearching || isWritingArticle;
 
   async function handleResearch() {
     if (!text.trim() || isBusy) return;
@@ -49,6 +59,11 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
     setText("");
     utils.idea.list.invalidate();
     onIdeaCreated(idea.id);
+  }
+
+  function handleGenerateArticle() {
+    if (!text.trim() || isBusy) return;
+    generateArticle.mutate({ topic: text.trim() });
   }
 
   function handleGeneratePost(type: "tweet" | "thread") {
@@ -68,6 +83,8 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
           <span className="text-[10px] font-mono text-amber-500 tracking-wider">
             {isGenerating
               ? `writing ${generatePost.variables?.type}…`
+              : isWritingArticle
+              ? "starting article…"
               : "researching…"}
           </span>
         </div>
@@ -126,6 +143,13 @@ export function ComposeBox({ onPostCreated, onIdeaCreated }: Props) {
             disabled={isBusy || !text.trim()}
             color="violet"
           />
+          <ActionButton
+            icon={NotebookPen}
+            label={isWritingArticle ? "queuing…" : "article"}
+            onClick={handleGenerateArticle}
+            disabled={isBusy || !text.trim()}
+            color="emerald"
+          />
           </div>
         </div>
       </div>
@@ -145,6 +169,7 @@ const BUTTON_COLORS = {
   amber: "bg-amber-500 text-zinc-950 hover:bg-amber-400",
   blue:  "bg-blue-400 text-zinc-950 hover:bg-blue-300",
   violet: "bg-violet-400 text-zinc-950 hover:bg-violet-300",
+  emerald: "bg-emerald-500 text-zinc-950 hover:bg-emerald-400",
 };
 
 function TopicSelect({
