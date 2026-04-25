@@ -7,7 +7,7 @@ import { syncApprovedPostsToMemoryStore } from "./services/memory.js";
 import { startScheduler } from "./services/scheduler.js";
 
 export type { AppRouter } from "./router/index.js";
-export type { Post, Idea, PostTopic, Memory } from "./db/schema.js";
+export type { Post, Idea, PostTopic, Memory, Article } from "./db/schema.js";
 export type { EnrichedContent } from "./services/research.js";
 
 const trpcHandler = createHTTPHandler({

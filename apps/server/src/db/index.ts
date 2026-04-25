@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { mkdirSync } from "fs";
-import { ideas, memories, posts } from "./schema.js";
+import { articles, ideas, memories, posts } from "./schema.js";
 
 const DB_PATH = "./data/content.db";
 
@@ -50,6 +50,19 @@ sqlite.exec(`
   CREATE TABLE IF NOT EXISTS memory_data_dictionary (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS articles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'researching',
+    research_summary TEXT,
+    title TEXT,
+    body TEXT,
+    word_count INTEGER,
+    error_message TEXT,
+    created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   );
 `);
@@ -107,5 +120,5 @@ for (const row of dictionaryRows) {
   upsertDictionary.run({ ...row, updatedAt: now });
 }
 
-export const db = drizzle(sqlite, { schema: { posts, ideas, memories } });
+export const db = drizzle(sqlite, { schema: { posts, ideas, memories, articles } });
 export const rawSqlite = sqlite as any;

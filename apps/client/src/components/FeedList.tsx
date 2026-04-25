@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { trpc } from "../trpc";
-import type { Post, Idea } from "@content-manager/server";
+import type { Post, Idea, Article } from "@content-manager/server";
 
-type Filter = "all" | "posts" | "calendar" | "ideas" | "archive";
+type Filter = "all" | "posts" | "calendar" | "ideas" | "articles" | "archive";
 
 type FeedItem =
   | {
@@ -27,6 +27,17 @@ type FeedItem =
       statusColor: string;
       createdAt: number;
       isPulsing: boolean;
+    }
+  | {
+      kind: "article";
+      id: number;
+      label: string;
+      status: Article["status"];
+      statusLabel: string;
+      statusColor: string;
+      createdAt: number;
+      wordCount: number | null;
+      isPulsing: boolean;
     };
 
 const POST_STATUS: Record<Post["status"], { label: string; color: string }> = {
@@ -44,12 +55,20 @@ const IDEA_STATUS: Record<Idea["status"], { label: string; color: string }> = {
   error:     { label: "Error",       color: "#f87171" },
 };
 
+const ARTICLE_STATUS: Record<Article["status"], { label: string; color: string }> = {
+  researching: { label: "Researching", color: "#f59e0b" },
+  writing:     { label: "Writing",     color: "#60a5fa" },
+  done:        { label: "Done",        color: "#10b981" },
+  error:       { label: "Error",       color: "#f87171" },
+};
+
 interface Props {
   onSelectPost: (id: number) => void;
   onSelectIdea: (id: number) => void;
+  onSelectArticle: (id: number) => void;
 }
 
-export function FeedList({ onSelectPost, onSelectIdea }: Props) {
+export function FeedList({ onSelectPost, onSelectIdea, onSelectArticle }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const utils = trpc.useUtils();
 
@@ -60,6 +79,12 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
       return false;
     },
   });
+  const { data: articles = [], isLoading: articlesLoading } = trpc.article.list.useQuery(undefined, {
+    refetchInterval: (query) => {
+      if (query.state.data?.some((a) => a.status === "researching" || a.status === "writing")) return 2000;
+      return false;
+    },
+  });
 
   const deletePost = trpc.post.delete.useMutation({
     onSuccess: () => utils.post.list.invalidate(),
@@ -67,8 +92,11 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
   const deleteIdea = trpc.idea.delete.useMutation({
     onSuccess: () => utils.idea.list.invalidate(),
   });
+  const deleteArticle = trpc.article.delete.useMutation({
+    onSuccess: () => utils.article.list.invalidate(),
+  });
 
-  const isLoading = postsLoading || ideasLoading;
+  const isLoading = postsLoading || ideasLoading || articlesLoading;
 
   const visiblePosts = posts.filter((post) => {
     if (filter === "archive") return post.status === "rejected";
@@ -77,7 +105,7 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
   });
 
   const feed: FeedItem[] = [
-    ...(filter !== "ideas" && filter !== "archive"
+    ...(filter !== "ideas" && filter !== "articles" && filter !== "archive"
       ? visiblePosts.map((p) => {
           const s = POST_STATUS[p.status];
           return {
@@ -113,7 +141,7 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
             };
           })
       : []),
-    ...(filter !== "posts" && filter !== "calendar" && filter !== "archive"
+    ...(filter !== "posts" && filter !== "calendar" && filter !== "articles" && filter !== "archive"
       ? ideas.map((i) => {
           const s = IDEA_STATUS[i.status];
           return {
@@ -128,6 +156,22 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
           };
         })
       : []),
+    ...(filter !== "posts" && filter !== "calendar" && filter !== "ideas" && filter !== "archive"
+      ? articles.map((a) => {
+          const s = ARTICLE_STATUS[a.status];
+          return {
+            kind: "article" as const,
+            id: a.id,
+            label: a.title ?? a.topic,
+            status: a.status,
+            statusLabel: s.label,
+            statusColor: s.color,
+            createdAt: a.createdAt,
+            wordCount: a.wordCount,
+            isPulsing: a.status === "researching" || a.status === "writing",
+          };
+        })
+      : []),
   ].sort((a, b) =>
     filter === "calendar" && a.kind === "post" && b.kind === "post"
       ? a.scheduledFor - b.scheduledFor
@@ -138,7 +182,7 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
     <div className="flex flex-col">
       {/* Filter tabs */}
       <div className="flex shrink-0 px-6 pt-3 pb-2 gap-1">
-        {(["all", "posts", "calendar", "ideas", "archive"] as Filter[]).map((f) => (
+        {(["all", "posts", "calendar", "ideas", "articles", "archive"] as Filter[]).map((f) => (
           <button
             key={f}
             className={`px-3 py-1.5 rounded-full text-[10px] font-semibold uppercase tracking-widest transition-colors ${
@@ -172,14 +216,16 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
           <div
             key={`${item.kind}-${item.id}`}
             className="relative group flex items-start gap-4 px-6 py-4 cursor-pointer hover:bg-zinc-900/60 rounded-xl mx-2 transition-colors"
-            onClick={() =>
-              item.kind === "post" ? onSelectPost(item.id) : onSelectIdea(item.id)
-            }
+            onClick={() => {
+              if (item.kind === "post") onSelectPost(item.id);
+              else if (item.kind === "idea") onSelectIdea(item.id);
+              else onSelectArticle(item.id);
+            }}
           >
             {/* Status dot */}
             <span
               className={`mt-[5px] w-1.5 h-1.5 rounded-full shrink-0 ${
-                item.kind === "idea" && item.isPulsing ? "animate-pulse" : ""
+                (item.kind === "idea" || item.kind === "article") && item.isPulsing ? "animate-pulse" : ""
               }`}
               style={{ backgroundColor: item.statusColor }}
             />
@@ -191,7 +237,7 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
               </p>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wide">
-                  {item.kind === "post" ? item.sub : "Research"}
+                  {item.kind === "post" ? item.sub : item.kind === "idea" ? "Research" : "Article"}
                 </span>
                 <span className="text-slate-600">·</span>
                 <span
@@ -209,6 +255,14 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
                     <span className="text-slate-600">·</span>
                   </>
                 )}
+                {item.kind === "article" && item.wordCount && (
+                  <>
+                    <span className="text-[10px] font-mono text-slate-500">
+                      {item.wordCount.toLocaleString()} words
+                    </span>
+                    <span className="text-slate-600">·</span>
+                  </>
+                )}
                 <span className="text-[10px] font-mono text-slate-500">
                   {item.kind === "post" && filter === "calendar"
                     ? formatScheduledDate(item.scheduledFor)
@@ -222,9 +276,9 @@ export function FeedList({ onSelectPost, onSelectIdea }: Props) {
               className="absolute top-4 right-4 text-zinc-900 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
-                item.kind === "post"
-                  ? deletePost.mutate({ id: item.id })
-                  : deleteIdea.mutate({ id: item.id });
+                if (item.kind === "post") deletePost.mutate({ id: item.id });
+                else if (item.kind === "idea") deleteIdea.mutate({ id: item.id });
+                else deleteArticle.mutate({ id: item.id });
               }}
               aria-label={`Delete ${item.kind}`}
             >

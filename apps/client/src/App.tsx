@@ -11,6 +11,7 @@ import { ComposeBox } from "./components/ComposeBox";
 import { FeedList } from "./components/FeedList";
 import { OutputPanel } from "./components/OutputPanel";
 import { IdeaPanel } from "./components/IdeaPanel";
+import { ArticlePanel } from "./components/ArticlePanel";
 
 export default function App() {
   const location = useLocation();
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/" element={<HomeRoute />} />
         <Route path="/posts/:postId" element={<PostRoute />} />
         <Route path="/ideas/:ideaId" element={<IdeaRoute />} />
+        <Route path="/articles/:articleId" element={<ArticleRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
@@ -60,10 +62,12 @@ function HomeRoute() {
       <ComposeBox
         onPostCreated={(id) => navigate(`/posts/${id}`)}
         onIdeaCreated={(id) => navigate(`/ideas/${id}`)}
+        onArticleCreated={(id) => navigate(`/articles/${id}`)}
       />
       <FeedList
         onSelectPost={(id) => navigate(`/posts/${id}`)}
         onSelectIdea={(id) => navigate(`/ideas/${id}`)}
+        onSelectArticle={(id) => navigate(`/articles/${id}`)}
       />
     </>
   );
@@ -89,4 +93,15 @@ function IdeaRoute() {
   }
 
   return <IdeaPanel ideaId={id} />;
+}
+
+function ArticleRoute() {
+  const { articleId } = useParams();
+  const id = Number(articleId);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <ArticlePanel articleId={id} />;
 }

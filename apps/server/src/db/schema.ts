@@ -66,3 +66,21 @@ export const memories = sqliteTable(
 
 export type Memory = typeof memories.$inferSelect;
 export type NewMemory = typeof memories.$inferInsert;
+
+export const articles = sqliteTable("articles", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  topic: text("topic").notNull(),
+  status: text("status", { enum: ["researching", "writing", "done", "error"] })
+    .notNull()
+    .default("researching"),
+  researchSummary: text("research_summary"),
+  title: text("title"),
+  body: text("body"),
+  wordCount: integer("word_count"),
+  errorMessage: text("error_message"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+export type Article = typeof articles.$inferSelect;
+export type NewArticle = typeof articles.$inferInsert;
