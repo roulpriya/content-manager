@@ -21,7 +21,7 @@ export function IdeaPanel({ ideaId }: Props) {
   return (
     <div className="flex flex-col p-6">
       <div className="flex justify-end mb-8">
-        <span className="text-[10px] font-mono text-slate-500">
+        <span className="text-[10px] text-slate-500">
           {new Date(idea.createdAt).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
@@ -31,7 +31,7 @@ export function IdeaPanel({ ideaId }: Props) {
       </div>
 
       <div className="mb-7">
-        <p className="text-[10px] font-mono uppercase tracking-widest text-amber-500 mb-2">
+        <p className="text-[10px] uppercase tracking-widest text-amber-500 mb-2">
           Research
         </p>
         <h1 className="text-base font-semibold text-slate-200 leading-snug">{idea.topic}</h1>
@@ -60,7 +60,7 @@ export function IdeaPanel({ ideaId }: Props) {
             <LoaderCircle className="w-4 h-4 text-amber-500 animate-spin shrink-0" />
             <p className="text-sm text-amber-500">Searching the web…</p>
           </div>
-          <p className="mt-2 text-[11px] font-mono text-amber-600 ml-5">
+          <p className="mt-2 text-[11px] text-amber-600 ml-5">
             usually takes 10–20s
           </p>
         </div>
@@ -105,7 +105,7 @@ function EnrichedView({ content }: { content: EnrichedContent }) {
           <div className="flex flex-col gap-3">
             {content.keyFacts.map((fact, i) => (
               <div key={i} className="flex gap-3">
-                <span className="shrink-0 w-5 h-5 rounded-md bg-zinc-800 text-[10px] font-mono text-slate-500 flex items-center justify-center">
+                <span className="shrink-0 w-5 h-5 rounded-md bg-zinc-800 text-[10px] text-slate-500 flex items-center justify-center">
                   {i + 1}
                 </span>
                 <p className="text-sm text-slate-300 leading-relaxed">{fact}</p>
@@ -133,7 +133,7 @@ function EnrichedView({ content }: { content: EnrichedContent }) {
                   </p>
                   <ExternalLink className="mt-0.5 shrink-0 w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors" />
                 </div>
-                <p className="mt-2 text-[10px] font-mono text-slate-500 truncate">
+                <p className="mt-2 text-[10px] text-slate-500 truncate">
                   {link.url}
                 </p>
               </a>
@@ -183,7 +183,7 @@ function parseMarkdownLinks(text: string): React.ReactNode[] {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-mono font-semibold text-slate-500 uppercase tracking-widest mb-4">
+    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-4">
       {children}
     </p>
   );

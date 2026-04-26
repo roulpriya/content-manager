@@ -185,10 +185,10 @@ export function FeedList({ onSelectPost, onSelectIdea, onSelectArticle }: Props)
         {(["all", "posts", "calendar", "ideas", "articles", "archive"] as Filter[]).map((f) => (
           <button
             key={f}
-            className={`px-3 py-1.5 rounded-full text-[10px] font-semibold uppercase tracking-widest transition-colors ${
+            className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-widest transition-all duration-150 ${
               filter === f
-                ? "text-amber-500 bg-amber-500/10"
-                : "text-slate-500 hover:text-slate-300"
+                ? "text-amber-400 bg-amber-500/12 border border-amber-500/20"
+                : "text-zinc-500 hover:text-slate-300 border border-transparent"
             }`}
             onClick={() => setFilter(f)}
           >
@@ -202,90 +202,104 @@ export function FeedList({ onSelectPost, onSelectIdea, onSelectArticle }: Props)
         {isLoading && (
           <div className="flex items-center gap-2 px-8 py-6">
             <span className="w-1 h-1 rounded-full bg-slate-500 animate-pulse" />
-            <span className="text-[10px] font-mono text-slate-500">loading</span>
+            <span className="text-[10px] text-slate-500">loading</span>
           </div>
         )}
 
         {!isLoading && feed.length === 0 && (
           <div className="px-8 pt-14">
-            <p className="text-sm font-mono text-slate-500">nothing here yet_</p>
+            <p className="text-sm text-slate-500">nothing here yet_</p>
           </div>
         )}
 
-        {feed.map((item) => (
-          <div
-            key={`${item.kind}-${item.id}`}
-            className="relative group flex items-start gap-4 px-6 py-4 cursor-pointer hover:bg-zinc-900/60 rounded-xl mx-2 transition-colors"
-            onClick={() => {
-              if (item.kind === "post") onSelectPost(item.id);
-              else if (item.kind === "idea") onSelectIdea(item.id);
-              else onSelectArticle(item.id);
-            }}
-          >
-            {/* Status dot */}
-            <span
-              className={`mt-[5px] w-1.5 h-1.5 rounded-full shrink-0 ${
-                (item.kind === "idea" || item.kind === "article") && item.isPulsing ? "animate-pulse" : ""
-              }`}
-              style={{ backgroundColor: item.statusColor }}
-            />
+        {feed.map((item) => {
+          const accentColor =
+            item.kind === "idea"
+              ? "#a78bfa"
+              : item.kind === "article"
+                ? "#10b981"
+                : item.sub === "Thread"
+                  ? "#60a5fa"
+                  : "#f59e0b";
 
-            {/* Content */}
-            <div className="flex-1 min-w-0 pr-5">
-              <p className="text-sm text-slate-200 font-medium leading-snug line-clamp-2">
-                {item.label}
-              </p>
-              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wide">
-                  {item.kind === "post" ? item.sub : item.kind === "idea" ? "Research" : "Article"}
-                </span>
-                <span className="text-slate-600">·</span>
-                <span
-                  className="text-[10px] font-mono"
-                  style={{ color: item.statusColor }}
-                >
-                  {item.statusLabel}
-                </span>
-                <span className="text-slate-600">·</span>
-                {item.kind === "post" && (
-                  <>
-                    <span className="text-[10px] font-mono text-slate-500">
-                      {item.topic}
-                    </span>
-                    <span className="text-slate-600">·</span>
-                  </>
-                )}
-                {item.kind === "article" && item.wordCount && (
-                  <>
-                    <span className="text-[10px] font-mono text-slate-500">
-                      {item.wordCount.toLocaleString()} words
-                    </span>
-                    <span className="text-slate-600">·</span>
-                  </>
-                )}
-                <span className="text-[10px] font-mono text-slate-500">
-                  {item.kind === "post" && filter === "calendar"
-                    ? formatScheduledDate(item.scheduledFor)
-                    : formatDate(item.createdAt)}
-                </span>
-              </div>
-            </div>
-
-            {/* Delete */}
-            <button
-              className="absolute top-4 right-4 text-zinc-900 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (item.kind === "post") deletePost.mutate({ id: item.id });
-                else if (item.kind === "idea") deleteIdea.mutate({ id: item.id });
-                else deleteArticle.mutate({ id: item.id });
+          return (
+            <div
+              key={`${item.kind}-${item.id}`}
+              className="relative group flex items-stretch gap-0 mx-2 cursor-pointer rounded-xl hover:bg-zinc-900/50 transition-colors overflow-hidden"
+              onClick={() => {
+                if (item.kind === "post") onSelectPost(item.id);
+                else if (item.kind === "idea") onSelectIdea(item.id);
+                else onSelectArticle(item.id);
               }}
-              aria-label={`Delete ${item.kind}`}
             >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
+              {/* Left accent bar */}
+              <div
+                className="shrink-0 w-[3px] rounded-l-xl transition-opacity opacity-40 group-hover:opacity-80"
+                style={{ backgroundColor: accentColor }}
+              />
+
+              {/* Content */}
+              <div className="flex-1 min-w-0 flex items-start gap-3 px-4 py-3.5 pr-10">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13.5px] text-slate-200 font-medium leading-snug line-clamp-2 tracking-tight">
+                    {item.label}
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    <span
+                      className="text-[10px] uppercase tracking-wide font-semibold"
+                      style={{ color: accentColor }}
+                    >
+                      {item.kind === "post" ? item.sub : item.kind === "idea" ? "Research" : "Article"}
+                    </span>
+                    <span className="text-zinc-700">·</span>
+                    <span
+                      className="text-[10px]"
+                      style={{ color: item.statusColor }}
+                    >
+                      {item.statusLabel}
+                    </span>
+                    {item.kind === "post" && (
+                      <>
+                        <span className="text-zinc-700">·</span>
+                        <span className="text-[10px] text-slate-500">
+                          {item.topic}
+                        </span>
+                      </>
+                    )}
+                    {item.kind === "article" && item.wordCount && (
+                      <>
+                        <span className="text-zinc-700">·</span>
+                        <span className="text-[10px] text-slate-500">
+                          {item.wordCount.toLocaleString()} words
+                        </span>
+                      </>
+                    )}
+                    <span className="text-zinc-700">·</span>
+                    <span className="text-[10px] text-slate-600">
+                      {item.kind === "post" && filter === "calendar"
+                        ? formatScheduledDate(item.scheduledFor)
+                        : formatDate(item.createdAt)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Delete */}
+              <button
+                className="absolute top-3.5 right-3 text-zinc-800 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (item.kind === "post") deletePost.mutate({ id: item.id });
+                  else if (item.kind === "idea") deleteIdea.mutate({ id: item.id });
+                  else deleteArticle.mutate({ id: item.id });
+                }}
+                aria-label={`Delete ${item.kind}`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
