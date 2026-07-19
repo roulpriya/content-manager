@@ -1,6 +1,7 @@
 import { MODEL, openai } from "../lib/llm.js";
 import type { PostTopic } from "../db/schema.js";
 import { askMemoryAgent } from "./memory.js";
+import { researchLinkedSources } from "./research.js";
 
 const SYSTEM_PROMPT = `You turn rough notes into sharp Twitter posts and threads.
 
@@ -15,6 +16,8 @@ You should aggressively remove AI-sounding phrasing, filler, generic fluff, and 
 Do not use double dashes.
 Do not sound like a template.
 Keep things readable, social-media native, and close to the user's existing writing style when memory context is available.
+
+When source research is provided, the post must be about that source. Ground every factual claim and quotation in the research. Never replace the source's subject with a generic adjacent lesson.
 
 Always respond with valid JSON in the exact shape requested.`;
 
@@ -94,6 +97,15 @@ const UNIVERSAL_ADD_ON = `Universal requirements:
 - Prefer crisp, natural sentences over polished AI-sounding phrasing
 - If memory context includes writing-style patterns, follow them closely`;
 
+const SOURCE_BASED_ADD_ON = `Linked-source requirements:
+- Lead with the user's genuine reaction or discovery, then share the source's concrete ideas
+- Mention the article's real subject rather than turning it into a generic motivational post
+- Prefer 2-4 specific takeaways or short bullet points when the source supports them
+- Attribute named ideas or quotations to the correct person
+- Use quotation marks only for wording explicitly included in Verified quotations
+- If there are no verified quotations, paraphrase and do not present wording as a quote
+- Do not claim to have read or learned anything that is absent from the research notes`;
+
 const TWEET_PROMPT = (input: string, topic: PostTopic) => `
 Input:
 ${input}
@@ -139,7 +151,8 @@ export async function generateContent(
   topic: PostTopic,
   feedback?: string
 ): Promise<{ title: string; body: string }> {
-  const memoryAnswer = await askMemoryAgent(`
+  const [memoryAnswer, sourceResearch] = await Promise.all([
+    askMemoryAgent(`
 Question:
 I am generating a ${type} for the topic "${topic}".
 New input:
@@ -156,13 +169,32 @@ Return a compact answer for a writing agent with two sections when possible:
 Only include patterns that are clearly visible in prior memories.
 Do not invent a style.
 If nothing useful exists, answer exactly: NO_RELEVANT_MEMORY
-`);
+`),
+    researchLinkedSources(input),
+  ]);
   const basePrompt =
     type === "tweet" ? TWEET_PROMPT(input, topic) : THREAD_PROMPT(input, topic);
   const promptSections = [basePrompt];
 
   if (memoryAnswer && memoryAnswer !== "NO_RELEVANT_MEMORY") {
     promptSections.push(`Use this memory-derived style and context if relevant:\n${memoryAnswer}`);
+  }
+
+  if (sourceResearch) {
+    promptSections.push(`${SOURCE_BASED_ADD_ON}
+
+Research from the linked source(s):
+URLs:
+${sourceResearch.urls.map((url) => `- ${url}`).join("\n")}
+
+Source summary:
+${sourceResearch.summary}
+
+Supported key points:
+${sourceResearch.keyPoints.length > 0 ? sourceResearch.keyPoints.map((point) => `- ${point}`).join("\n") : "- None extracted"}
+
+Verified quotations:
+${sourceResearch.notableQuotes.length > 0 ? sourceResearch.notableQuotes.map((quote) => `- ${quote}`).join("\n") : "- None"}`);
   }
 
   if (feedback) {

@@ -158,6 +158,7 @@ export function ComposeBox({ onPostCreated, onIdeaCreated, onArticleCreated }: P
 }
 
 const TOPIC_OPTIONS: Array<{ value: PostTopic; label: string }> = [
+  { value: "general", label: "General / Article takeaway" },
   { value: "day-schedule", label: "Day Schedule" },
   { value: "gym-routine", label: "Gym Routine" },
   { value: "llm-project", label: "LLM Project" },

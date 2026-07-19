@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { ARTICLE_BODY, SAMPLES, TOPIC_ICONS, TOPIC_LABELS, TOPICS } from './data';
+import { ARTICLE_BODY, TOPIC_ICONS, TOPIC_LABELS, TOPICS } from './data';
 import type { Article, Idea, Memory, Post, GeneratePreload } from './types';
+import { trpc } from './trpc';
 
 // ── Shared ──────────────────────────────────────────────────────────────────
 
@@ -227,7 +228,24 @@ export function GenerateView({ onSave, preload }: GenerateViewProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [generatedPost, setGeneratedPost] = useState<{
+    id: number;
+    title: string;
+    tweets: string[];
+  } | null>(null);
+  const [generationError, setGenerationError] = useState('');
   const timerRef = useRef<number | null>(null);
+  const utils = trpc.useUtils();
+
+  const updateStatus = trpc.post.updateStatus.useMutation();
+  const regeneratePost = trpc.post.regenerate.useMutation({
+    onSuccess: (post) => showGeneratedPost(post),
+    onError: (error) => showGenerationError(error.message),
+  });
+  const generatePost = trpc.post.generate.useMutation({
+    onSuccess: (post) => showGeneratedPost(post),
+    onError: (error) => showGenerationError(error.message),
+  });
 
   useEffect(() => {
     if (preload) {
@@ -236,6 +254,8 @@ export function GenerateView({ onSave, preload }: GenerateViewProps) {
       setStep('input');
       setStreamedTexts([]);
       setShowFeedback(false);
+      setGeneratedPost(null);
+      setGenerationError('');
     }
   }, [preload]);
 
@@ -282,52 +302,74 @@ export function GenerateView({ onSave, preload }: GenerateViewProps) {
     }, 7);
   };
 
+  const splitThread = (body: string): string[] => {
+    const parts = body
+      .split(/\n(?=\d+\/\s*)/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    return parts.length > 1 ? parts : body.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
+  };
+
+  const showGeneratedPost = (post: { id: number; title: string | null; body: string | null }) => {
+    if (!post.body) {
+      showGenerationError('The writer returned an empty post.');
+      return;
+    }
+    const tweets = postType === 'tweet' ? [post.body] : splitThread(post.body);
+    setGeneratedPost({ id: post.id, title: post.title ?? notes.trim().slice(0, 50), tweets });
+    setStreamedTexts(tweets);
+    setIsStreaming(false);
+    setStep('result');
+  };
+
+  const showGenerationError = (message: string) => {
+    setGenerationError(message);
+    setIsStreaming(false);
+    setStep('input');
+  };
+
   const generate = () => {
     clearTimer();
     setStep('streaming');
     setIsStreaming(true);
     setStreamedTexts([]);
-    const sample = SAMPLES[topic];
-    if (postType === 'tweet') streamTweet(sample.tweet);
-    else streamThread(sample.thread, 0);
+    setGeneratedPost(null);
+    setGenerationError('');
+    generatePost.mutate({
+      input: notes.trim(),
+      type: postType,
+      topic: topic as typeof TOPICS[number],
+    });
   };
 
   useEffect(() => () => clearTimer(), []);
 
-  const lastSample =
-    postType === 'tweet'
-      ? SAMPLES[topic].tweet
-      : SAMPLES[topic].thread[SAMPLES[topic].thread.length - 1];
-  const isDone =
-    !isStreaming &&
-    step === 'streaming' &&
-    streamedTexts.length > 0 &&
-    streamedTexts[streamedTexts.length - 1] === lastSample;
-
-  useEffect(() => {
-    if (isDone) setStep('result');
-  }, [isDone]);
-
-  const handleAccept = () => {
-    const title = notes.trim().slice(0, 50) || `${TOPIC_LABELS[topic]} post`;
-    const body = postType === 'tweet' ? SAMPLES[topic].tweet : SAMPLES[topic].thread;
+  const handleAccept = async () => {
+    if (!generatedPost) return;
+    await updateStatus.mutateAsync({ id: generatedPost.id, status: 'accepted' });
+    await utils.post.list.invalidate();
     onSave({
-      id: Date.now(),
-      title,
+      id: generatedPost.id,
+      title: generatedPost.title,
       type: postType,
       topic,
       status: 'accepted',
       scheduledFor: null,
-      body,
+      body: postType === 'tweet' ? generatedPost.tweets[0] : generatedPost.tweets,
     });
     setStep('saved');
   };
 
   const handleReject = () => setStep('input');
   const handleRegen = () => {
-    setFeedback('');
+    if (!generatedPost) return;
+    setStep('streaming');
+    setIsStreaming(true);
+    setStreamedTexts([]);
     setShowFeedback(false);
-    generate();
+    setGenerationError('');
+    regeneratePost.mutate({ id: generatedPost.id, feedback: feedback.trim() || undefined });
+    setFeedback('');
   };
 
   if (step === 'saved') {
@@ -460,6 +502,11 @@ export function GenerateView({ onSave, preload }: GenerateViewProps) {
             >
               Generate →
             </button>
+            {generationError && (
+              <div style={{ marginTop: 14, color: 'var(--red)', fontSize: 12 }}>
+                {generationError}
+              </div>
+            )}
           </div>
         )}
 
@@ -496,7 +543,7 @@ export function GenerateView({ onSave, preload }: GenerateViewProps) {
                 )}
               </div>
             ) : (
-              SAMPLES[topic].thread.map(
+              generatedPost?.tweets.map(
                 (_, i) =>
                   streamedTexts[i] !== undefined && (
                     <div key={i} className="tweet-item">
